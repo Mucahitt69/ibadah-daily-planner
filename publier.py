@@ -10,7 +10,9 @@
 # Pour le lancer :   python publier.py
 # ═══════════════════════════════════════════════════════════
 
+import hashlib
 import pathlib
+import re
 import shutil
 
 RACINE = pathlib.Path(__file__).resolve().parent
@@ -43,6 +45,44 @@ HEADERS = """/sw.js
 """
 
 
+# Fichiers dont le navigateur pourrait garder une vieille copie.
+ESTAMPILLES = ["styles.css", "store.js", "app.js", "rappels.js"]
+
+
+def estampiller(dossier):
+    """Colle un numéro de version sur les fichiers de l'appli.
+
+    Sans cela, quelqu'un qui a déjà ouvert l'appli continue de voir
+    l'ancienne version pendant des heures : son navigateur garde une
+    copie et ne redemande pas le fichier. En changeant l'adresse
+    (styles.css?v=a1b2c3), on l'oblige à télécharger la nouvelle.
+
+    Le numéro est calculé à partir du contenu : il ne change que si
+    quelque chose a réellement été modifié.
+    """
+    empreinte = hashlib.sha256()
+    for nom in ESTAMPILLES:
+        empreinte.update((dossier / nom).read_bytes())
+    version = empreinte.hexdigest()[:8]
+
+    # 1. La page principale pointe vers les adresses estampillées
+    page = (dossier / "index.html").read_text(encoding="utf-8")
+    for nom in ESTAMPILLES:
+        page = page.replace(f'"{nom}"', f'"{nom}?v={version}"')
+    (dossier / "index.html").write_text(page, encoding="utf-8")
+
+    # 2. Le mode hors-ligne doit garder exactement les mêmes adresses,
+    #    sinon il conserverait les anciennes en réserve.
+    sw = (dossier / "sw.js").read_text(encoding="utf-8")
+    sw = re.sub(r"const VERSION = '[^']*';", f"const VERSION = 'ibadah-{version}';", sw)
+    for nom in ESTAMPILLES:
+        sw = sw.replace(f"'./{nom}'", f"'./{nom}?v={version}'")
+    (dossier / "sw.js").write_text(sw, encoding="utf-8")
+
+    print(f"  version {version}  (apposée sur {len(ESTAMPILLES)} fichiers)")
+    return version
+
+
 def main():
     if SITE.exists():
         # On vide le dossier sans le supprimer, pour ne pas détruire
@@ -72,6 +112,8 @@ def main():
             print(f"  copié   {nom}/  ({nb} fichiers)")
         else:
             manquants.append(nom + "/")
+
+    estampiller(SITE)
 
     (SITE / "_headers").write_text(HEADERS, encoding="utf-8")
     print("  créé    _headers")
