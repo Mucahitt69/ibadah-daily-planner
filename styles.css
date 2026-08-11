@@ -37,6 +37,14 @@ html[data-theme="dark"] {
 
 * { box-sizing: border-box; }
 
+/* ⚠️ Règle indispensable.
+   Le navigateur cache un élément marqué « hidden » en lui mettant
+   display:none — mais la moindre règle de style qui impose un display
+   (display:flex, display:block…) reprend le dessus, et l'élément reste
+   visible. C'est arrivé à l'écran de bienvenue, qui ne se refermait plus.
+   Ce !important garantit que « hidden » veut toujours dire caché. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);

@@ -8,7 +8,7 @@
    ci-dessous, sinon le navigateur continuera de servir l'ancienne copie.
    ═══════════════════════════════════════════════════════════ */
 
-const VERSION = 'ibadah-v2';
+const VERSION = 'ibadah-v3';
 
 const FICHIERS = [
   './',
