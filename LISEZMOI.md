@@ -28,25 +28,34 @@ Pour arrêter le serveur : `Ctrl` + `C`.
 
 ---
 
-## Mettre l'appli en ligne
+## L'appli en ligne
 
-1. Lance :
+**https://mucahitt69.github.io/ibadah-daily-planner/**
 
-   ```
-   python publier.py
-   ```
+Hébergée gratuitement par GitHub Pages, sans limite ni crédit.
+Ouvre cette adresse sur ton téléphone, puis « Ajouter à l'écran d'accueil ».
 
-   Cela crée un dossier **`site`** qui contient uniquement l'application
-   (environ 96 Ko). Les fichiers de travail restent chez toi.
+### Publier une modification
 
-2. Va sur **https://app.netlify.com/drop**
+Trois commandes, dans cet ordre :
 
-3. Glisse le dossier **`site`** dans la page.
+```
+python publier.py
+git add -A
+git commit -m "ce que j'ai change"
+git push
+```
 
-4. Tu obtiens une adresse internet. Ouvre-la sur ton téléphone,
-   puis « Ajouter à l'écran d'accueil ».
+`publier.py` recopie l'application dans le dossier **`docs`** — c'est ce
+dossier-là que GitHub met en ligne. Les fichiers de travail (`.claude`,
+archives) sont exclus et ne partent jamais sur internet.
 
-Après chaque modification : relance `python publier.py`, puis renvoie le dossier.
+Compte une à deux minutes entre le `git push` et l'apparition de la
+nouvelle version en ligne.
+
+> Si le site ne se met pas à jour sur ton téléphone : ferme complètement
+> l'appli et rouvre-la. Le mode hors-ligne garde une copie de l'ancienne
+> version jusqu'au prochain démarrage.
 
 ---
 
@@ -63,9 +72,11 @@ Après chaque modification : relance `python publier.py`, puis renvoie le dossie
 | `manifest.webmanifest` | La carte d'identité de l'appli (nom, icône, couleur) |
 | `icons/` | L'icône dorée |
 | `serve.py` | Le serveur pour travailler en local |
-| `publier.py` | Prépare le dossier `site` à mettre en ligne |
+| `publier.py` | Recopie l'application dans `docs/` pour la mise en ligne |
 
-Les dossiers `.claude/` et `site/` ne se modifient pas à la main.
+Le dossier `docs/` est fabriqué automatiquement : ne le modifie jamais à la
+main, tes changements seraient écrasés. Modifie les fichiers de la racine.
+Le dossier `.claude/` contient les outils de l'assistant.
 
 ---
 
