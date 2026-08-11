@@ -1,0 +1,14 @@
+# Outils et réglages de l'assistant — ne doivent jamais être publiés
+.claude/
+.impeccable/
+
+# Ancien dossier de publication et archives
+site/
+*.zip
+
+# Fichiers temporaires
+__pycache__/
+*.pyc
+Thumbs.db
+desktop.ini
+.DS_Store

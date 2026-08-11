@@ -1,0 +1,98 @@
+# ═══════════════════════════════════════════════════════════
+# Ibadah Daily Planner — préparer le dossier à mettre en ligne
+# ───────────────────────────────────────────────────────────
+# Ce script fabrique un dossier « docs » qui contient UNIQUEMENT
+# l'application. Les fichiers de travail (réglages, outils,
+# scripts) restent sur ton ordinateur et ne sont jamais publiés.
+#
+# C'est ce dossier « docs » que GitHub Pages met en ligne.
+#
+# Pour le lancer :   python publier.py
+# ═══════════════════════════════════════════════════════════
+
+import pathlib
+import shutil
+
+RACINE = pathlib.Path(__file__).resolve().parent
+SITE = RACINE / "docs"          # GitHub Pages publie le contenu du dossier « docs »
+
+# Les seuls fichiers qui partent en ligne.
+FICHIERS = [
+    "index.html",
+    "styles.css",
+    "store.js",
+    "app.js",
+    "rappels.js",
+    "sw.js",
+    "manifest.webmanifest",
+]
+
+DOSSIERS = ["icons"]
+
+# Réglages du serveur de Netlify.
+# Le service worker ne doit jamais être gardé en mémoire : sinon une
+# nouvelle version de l'appli mettrait des jours à arriver chez les gens.
+HEADERS = """/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+
+/index.html
+  Cache-Control: no-cache
+"""
+
+
+def main():
+    if SITE.exists():
+        # On vide le dossier sans le supprimer, pour ne pas détruire
+        # d'éventuels fichiers cachés de suivi de version.
+        for item in SITE.iterdir():
+            if item.name.startswith("."):
+                continue
+            shutil.rmtree(item) if item.is_dir() else item.unlink()
+    else:
+        SITE.mkdir()
+
+    manquants = []
+
+    for nom in FICHIERS:
+        source = RACINE / nom
+        if source.exists():
+            shutil.copy2(source, SITE / nom)
+            print(f"  copié   {nom}")
+        else:
+            manquants.append(nom)
+
+    for nom in DOSSIERS:
+        source = RACINE / nom
+        if source.is_dir():
+            shutil.copytree(source, SITE / nom)
+            nb = len(list((SITE / nom).iterdir()))
+            print(f"  copié   {nom}/  ({nb} fichiers)")
+        else:
+            manquants.append(nom + "/")
+
+    (SITE / "_headers").write_text(HEADERS, encoding="utf-8")
+    print("  créé    _headers")
+
+    # Sans ce fichier vide, GitHub Pages fait passer le site dans un
+    # moteur de blog qui ignore tout fichier commençant par « _ ».
+    (SITE / ".nojekyll").write_text("", encoding="utf-8")
+    print("  créé    .nojekyll")
+
+    print()
+    if manquants:
+        print("ATTENTION, fichiers introuvables : " + ", ".join(manquants))
+        print()
+
+    poids = sum(f.stat().st_size for f in SITE.rglob("*") if f.is_file())
+    print(f"Dossier prêt : {SITE}")
+    print(f"Poids total  : {poids / 1024:.0f} Ko")
+    print()
+    print("Étape suivante, pour mettre la nouvelle version en ligne :")
+    print('  git add -A && git commit -m "mise à jour" && git push')
+
+
+if __name__ == "__main__":
+    main()

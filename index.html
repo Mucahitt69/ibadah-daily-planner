@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B6E55">
+  <meta name="description" content="Un carnet doux pour ne rien oublier de ton quotidien spirituel.">
+  <title>Ibadah Daily Planner</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Ibadah">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="phone" id="app">
+
+   <main class="screens">
+
+    <!-- ══════════════ ÉCRAN : AUJOURD'HUI ══════════════ -->
+    <section class="screen is-active" id="screen-today" aria-labelledby="today-title">
+      <header class="topbar">
+        <div>
+          <p class="topbar__date" id="today-date">—</p>
+          <h1 class="topbar__title" id="today-title">Assalamu alaykum</h1>
+        </div>
+        <button class="icon-btn" id="theme-toggle" aria-label="Changer le thème clair / sombre">
+          <span aria-hidden="true" id="theme-icon">🌙</span>
+        </button>
+      </header>
+
+      <div class="scroll">
+
+        <!-- Proposition d'installation (apparaît seulement si le navigateur le permet) -->
+        <div class="install-bar" id="install-bar" hidden>
+          <p>Ajoute Ibadah à ton écran d'accueil pour l'ouvrir comme une vraie appli.</p>
+          <button class="btn btn--primary" id="install-yes">Installer</button>
+          <button class="install-bar__close" id="install-no" aria-label="Masquer cette proposition">×</button>
+        </div>
+
+        <!-- Anneau de progression du jour -->
+        <div class="card card--hero">
+          <div class="ring" role="img" id="ring" aria-label="Progression du jour">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring__track" cx="60" cy="60" r="52"></circle>
+              <circle class="ring__fill" cx="60" cy="60" r="52" id="ring-fill"></circle>
+            </svg>
+            <div class="ring__label">
+              <strong id="ring-percent">0%</strong>
+              <span id="ring-sub">de ta journée</span>
+            </div>
+          </div>
+          <div class="hero__side">
+            <p class="hero__msg" id="hero-msg">Qu'Allah facilite ta journée.</p>
+            <div class="hero__stats">
+              <div class="pill"><span aria-hidden="true">🔥</span> <b id="hero-streak">0</b> jours</div>
+              <div class="pill"><span aria-hidden="true">✨</span> <b id="hero-points">0</b> points</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Les 5 prières -->
+        <h2 class="section-title">
+          Les 5 prières
+          <span class="section-title__hint" id="prayers-left">5 restantes</span>
+        </h2>
+        <div class="prayers" id="prayers" role="group" aria-label="Les cinq prières du jour"></div>
+
+        <!-- Tâches du jour -->
+        <h2 class="section-title">
+          Aujourd'hui
+          <span class="section-title__hint" id="tasks-count"></span>
+        </h2>
+        <ul class="tasks" id="task-list"></ul>
+
+        <div class="empty" id="tasks-empty" hidden>
+          <svg viewBox="0 0 96 96" class="empty__art" aria-hidden="true">
+            <circle cx="48" cy="48" r="34" class="empty__c1"/>
+            <path d="M32 50l11 11 21-23" class="empty__c2"/>
+          </svg>
+          <p class="empty__title" id="empty-title">Ta journée est libre</p>
+          <p class="empty__text" id="empty-text">Ajoute une première intention.<br>Même une seule, faite avec sincérité, compte.</p>
+          <button class="btn btn--primary" data-go="add">Ajouter une tâche</button>
+        </div>
+
+        <!-- Terminées -->
+        <details class="done-block" id="done-block" hidden>
+          <summary>Terminées <span class="badge-count" id="done-count">0</span></summary>
+          <ul class="tasks tasks--done" id="done-list"></ul>
+        </details>
+
+        <div class="scroll__pad"></div>
+      </div>
+
+      <button class="fab" id="fab" aria-label="Ajouter une tâche">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </section>
+
+    <!-- ══════════════ ÉCRAN : STATISTIQUES ══════════════ -->
+    <section class="screen" id="screen-stats" aria-labelledby="stats-title" hidden>
+      <header class="topbar">
+        <div>
+          <p class="topbar__date">Ton cheminement</p>
+          <h1 class="topbar__title" id="stats-title">Statistiques</h1>
+        </div>
+      </header>
+
+      <div class="scroll">
+        <div class="stat-grid">
+          <div class="card stat">
+            <span class="stat__icon" aria-hidden="true">🔥</span>
+            <b class="stat__value" id="st-streak">0</b>
+            <span class="stat__label">jours d'affilée</span>
+          </div>
+          <div class="card stat">
+            <span class="stat__icon" aria-hidden="true">✨</span>
+            <b class="stat__value" id="st-points">0</b>
+            <span class="stat__label">points</span>
+          </div>
+          <div class="card stat">
+            <span class="stat__icon" aria-hidden="true">✅</span>
+            <b class="stat__value" id="st-total">0</b>
+            <span class="stat__label">actes accomplis</span>
+          </div>
+          <div class="card stat">
+            <span class="stat__icon" aria-hidden="true">🕌</span>
+            <b class="stat__value" id="st-prayers">0</b>
+            <span class="stat__label">prières cochées</span>
+          </div>
+        </div>
+
+        <h2 class="section-title">Ces 7 derniers jours</h2>
+        <div class="card">
+          <div class="chart" id="chart" role="img" aria-label="Graphique des 7 derniers jours"></div>
+        </div>
+
+        <h2 class="section-title">Tes badges</h2>
+        <div class="badges" id="badges"></div>
+
+        <p class="note">
+          Ces chiffres ne sont visibles que par toi. Ils ne sont ni partagés,
+          ni comparés à ceux d'autres personnes — ton adoration ne regarde qu'Allah.
+        </p>
+        <div class="scroll__pad"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ ÉCRAN : HADITH ══════════════ -->
+    <section class="screen" id="screen-hadith" aria-labelledby="hadith-title" hidden>
+      <header class="topbar">
+        <div>
+          <p class="topbar__date">Rappel du jour</p>
+          <h1 class="topbar__title" id="hadith-title">Hadith</h1>
+        </div>
+        <button class="icon-btn" id="hadith-refresh" aria-label="Voir un autre hadith">
+          <span aria-hidden="true">🔄</span>
+        </button>
+      </header>
+
+      <div class="scroll">
+        <article class="card card--hadith" id="hadith-card" aria-live="polite">
+          <div class="skeleton" id="hadith-loading">
+            <div class="skeleton__line"></div>
+            <div class="skeleton__line"></div>
+            <div class="skeleton__line skeleton__line--short"></div>
+            <p class="skeleton__text">Recherche du hadith du jour…</p>
+          </div>
+          <div id="hadith-content" hidden>
+            <span class="quote-mark" aria-hidden="true">❝</span>
+            <p class="hadith__text" id="hadith-text"></p>
+            <p class="hadith__source" id="hadith-source"></p>
+            <div class="hadith__note" id="hadith-note"></div>
+          </div>
+        </article>
+
+        <div class="card card--info">
+          <h2 class="card__h">Infos importantes</h2>
+          <ul class="info-list" id="info-list"></ul>
+        </div>
+        <div class="scroll__pad"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ ÉCRAN : RÉGLAGES ══════════════ -->
+    <section class="screen" id="screen-settings" aria-labelledby="set-title" hidden>
+      <header class="topbar">
+        <div>
+          <p class="topbar__date">Ton espace</p>
+          <h1 class="topbar__title" id="set-title">Réglages</h1>
+        </div>
+      </header>
+
+      <div class="scroll">
+        <div class="card list">
+          <label class="row row--switch">
+            <span>
+              <b>Rappels</b>
+              <small id="notif-help">Recevoir des notifications douces</small>
+            </span>
+            <input type="checkbox" id="set-notif" class="switch">
+          </label>
+          <label class="row row--switch">
+            <span>
+              <b>Mode sombre</b>
+              <small>Plus reposant le soir</small>
+            </span>
+            <input type="checkbox" id="set-dark" class="switch">
+          </label>
+          <label class="row row--switch">
+            <span>
+              <b>Silence la nuit</b>
+              <small>Aucun rappel entre 22h et 6h</small>
+            </span>
+            <input type="checkbox" id="set-quiet" class="switch" checked>
+          </label>
+        </div>
+
+        <div class="card list">
+          <button class="row row--action" id="btn-demo">
+            <span><b>Charger des données d'exemple</b><small>12 jours d'historique pour voir les statistiques</small></span>
+            <span aria-hidden="true">↺</span>
+          </button>
+          <button class="row row--action" id="btn-clear">
+            <span><b>Tout effacer</b><small>Repartir d'une page blanche</small></span>
+            <span aria-hidden="true">🧹</span>
+          </button>
+        </div>
+
+        <p class="note">
+          Ibadah Daily Planner — version 0.2.<br>
+          Tes données restent sur cet appareil. Seul le hadith du jour est cherché en ligne.
+        </p>
+        <div class="scroll__pad"></div>
+      </div>
+    </section>
+
+   </main>
+
+    <!-- ══════════════ BARRE DE NAVIGATION ══════════════ -->
+    <nav class="tabbar" aria-label="Navigation principale">
+      <button class="tab is-active" data-go="today" aria-label="Aujourd'hui">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        <span>Aujourd'hui</span>
+      </button>
+      <button class="tab" data-go="stats" aria-label="Progrès">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>
+        <span>Progrès</span>
+      </button>
+      <button class="tab" data-go="hadith" aria-label="Hadith du jour">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v14H4zM20 5h-7v14h7z"/></svg>
+        <span>Hadith</span>
+      </button>
+      <button class="tab" data-go="settings" aria-label="Réglages">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg>
+        <span>Réglages</span>
+      </button>
+    </nav>
+
+    <!-- ══════════════ FEUILLE : AJOUTER UNE TÂCHE ══════════════ -->
+    <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+      <div class="sheet__grab" aria-hidden="true"></div>
+      <h2 class="sheet__title" id="sheet-title">Nouvelle intention</h2>
+
+      <form id="task-form" novalidate>
+        <label class="field">
+          <span class="field__label">Que veux-tu accomplir ?</span>
+          <input type="text" id="f-name" placeholder="Ex : Lire une page de Coran" maxlength="60" autocomplete="off">
+          <span class="field__error" id="f-name-err" hidden>Écris d'abord le nom de ta tâche 🙂</span>
+        </label>
+
+        <fieldset class="field">
+          <legend class="field__label">À quelle fréquence ?</legend>
+          <div class="chips" id="f-freq" role="radiogroup" aria-label="Fréquence">
+            <button type="button" class="chip is-on" data-freq="daily" role="radio" aria-checked="true">Chaque jour</button>
+            <button type="button" class="chip" data-freq="weekly" role="radio" aria-checked="false">Chaque semaine</button>
+            <button type="button" class="chip" data-freq="monthly" role="radio" aria-checked="false">Chaque mois</button>
+            <button type="button" class="chip" data-freq="once" role="radio" aria-checked="false">Une seule fois</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="field" id="f-day-wrap" hidden>
+          <legend class="field__label">Quel jour ?</legend>
+          <div class="days" id="f-day" role="radiogroup" aria-label="Jour de la semaine">
+            <button type="button" class="day" data-day="1" role="radio" aria-checked="false" aria-label="Lundi">Lun</button>
+            <button type="button" class="day" data-day="2" role="radio" aria-checked="false" aria-label="Mardi">Mar</button>
+            <button type="button" class="day" data-day="3" role="radio" aria-checked="false" aria-label="Mercredi">Mer</button>
+            <button type="button" class="day" data-day="4" role="radio" aria-checked="false" aria-label="Jeudi">Jeu</button>
+            <button type="button" class="day" data-day="5" role="radio" aria-checked="false" aria-label="Vendredi">Ven</button>
+            <button type="button" class="day" data-day="6" role="radio" aria-checked="false" aria-label="Samedi">Sam</button>
+            <button type="button" class="day" data-day="0" role="radio" aria-checked="false" aria-label="Dimanche">Dim</button>
+          </div>
+        </fieldset>
+
+        <label class="field">
+          <span class="field__label">Un rappel ? <small>(facultatif)</small></span>
+          <input type="time" id="f-time">
+        </label>
+
+        <div class="sheet__actions">
+          <button type="button" class="btn btn--ghost" id="sheet-cancel">Annuler</button>
+          <button type="submit" class="btn btn--primary" id="sheet-submit">Ajouter</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ══════════════ FEUILLE : OPTIONS D'UNE TÂCHE ══════════════ -->
+    <div class="sheet-backdrop" id="menu-backdrop" hidden></div>
+    <div class="sheet sheet--menu" id="menu-sheet" role="dialog" aria-modal="true" aria-labelledby="menu-name" hidden>
+      <div class="sheet__grab" aria-hidden="true"></div>
+      <p class="sheet__subtitle" id="menu-name"></p>
+
+      <div id="menu-choices">
+        <button class="menu-item" id="menu-edit">
+          <span aria-hidden="true">✍️</span> Modifier cette intention
+        </button>
+        <button class="menu-item" id="menu-delete">
+          <span aria-hidden="true">🗑️</span> Retirer de ma liste
+        </button>
+        <button class="btn btn--ghost menu-cancel" id="menu-cancel">Annuler</button>
+      </div>
+
+      <div id="menu-confirm" hidden>
+        <p class="confirm__text">
+          Cette intention ne s'affichera plus les prochains jours.<br>
+          Ce que tu as déjà accompli reste inscrit dans ton historique.
+        </p>
+        <div class="sheet__actions">
+          <button class="btn btn--ghost" id="confirm-no">Garder</button>
+          <button class="btn btn--soft" id="confirm-yes">Retirer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Petit message de félicitation -->
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <!-- ══════════════ BIENVENUE (première ouverture) ══════════════ -->
+    <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="w1-title" hidden>
+
+      <div class="welcome__step" id="welcome-1">
+        <div class="welcome__art" aria-hidden="true">
+          <svg viewBox="0 0 120 120">
+            <rect x="18" y="18" width="84" height="84" rx="10" transform="rotate(0 60 60)" class="w-star"/>
+            <rect x="18" y="18" width="84" height="84" rx="10" transform="rotate(45 60 60)" class="w-star"/>
+            <circle cx="60" cy="60" r="20" class="w-hole"/>
+          </svg>
+        </div>
+        <h1 class="welcome__title" id="w1-title">Bienvenue 🤍</h1>
+        <p class="welcome__text">
+          Ibadah est un carnet discret pour t'aider à ne rien oublier
+          de ton quotidien spirituel.
+        </p>
+        <p class="welcome__text welcome__text--small">
+          Tes données restent sur ton appareil. Rien n'est partagé,
+          rien n'est comparé : ton adoration ne regarde qu'Allah.
+        </p>
+        <button class="btn btn--primary welcome__btn" id="w-next">Commencer</button>
+      </div>
+
+      <div class="welcome__step" id="welcome-2" hidden>
+        <h1 class="welcome__title" id="w2-title">Par quoi veux-tu commencer ?</h1>
+        <p class="welcome__text welcome__text--small">
+          Choisis ce qui te parle. Tu pourras tout modifier ensuite.
+        </p>
+        <div class="packs" id="packs"></div>
+        <div class="welcome__actions">
+          <button class="btn btn--ghost" id="w-skip">Partir de zéro</button>
+          <button class="btn btn--primary" id="w-done">C'est parti</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="store.js"></script>
+  <script src="app.js"></script>
+  <script src="rappels.js"></script>
+</body>
+</html>
