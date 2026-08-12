@@ -32,9 +32,11 @@ FICHIERS = [
 
 DOSSIERS = ["icons"]
 
-# Réglages du serveur de Netlify.
-# Le service worker ne doit jamais être gardé en mémoire : sinon une
-# nouvelle version de l'appli mettrait des jours à arriver chez les gens.
+# Réglages destinés à un hébergeur qui lit ce fichier (Netlify, Cloudflare…).
+# ⚠️ GitHub Pages, l'hébergeur actuel, l'ignore complètement. On le garde au
+# cas où le site déménagerait, mais il ne faut compter dessus pour rien :
+# c'est sw.js qui garantit l'arrivée des nouvelles versions, en allant
+# chercher index.html sur le réseau avant de regarder sa réserve.
 HEADERS = """/sw.js
   Cache-Control: no-cache
 

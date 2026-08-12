@@ -69,8 +69,31 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Les fichiers de l'appli : la copie locale d'abord (ouverture instantanée),
-  // et on rafraîchit la copie en arrière-plan.
+  // La page principale : le réseau d'abord, la copie locale seulement en secours.
+  //
+  // C'est elle qui contient les adresses estampillées de tous les autres
+  // fichiers (styles.css?v=…). Si on la servait depuis la réserve, une
+  // nouvelle version mettrait une ouverture de plus à apparaître : la
+  // première ouverture rafraîchirait la réserve, la deuxième seulement
+  // l'afficherait. La page est minuscule, ce détour ne coûte rien.
+  if (req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('/index.html')) {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res && res.ok) {
+            const copie = res.clone();
+            caches.open(VERSION).then(c => c.put(req, copie));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Les autres fichiers portent un numéro de version dans leur adresse :
+  // la copie locale ne peut pas être périmée. On la sert donc en premier,
+  // pour une ouverture instantanée, et on rafraîchit en arrière-plan.
   e.respondWith(
     caches.match(req).then(copie => {
       const reseau = fetch(req)
