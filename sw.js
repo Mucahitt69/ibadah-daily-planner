@@ -15,6 +15,7 @@ const FICHIERS = [
   './index.html',
   './styles.css',
   './store.js',
+  './adhkar.js',
   './app.js',
   './rappels.js',
   './manifest.webmanifest',

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ibadah">
-  <link rel="stylesheet" href="styles.css?v=c76f621e">
+  <link rel="stylesheet" href="styles.css?v=4502f4b5">
 </head>
 <body>
 
@@ -56,7 +56,7 @@
             <p class="hero__msg" id="hero-msg">Qu'Allah facilite ta journée.</p>
             <div class="hero__stats">
               <div class="pill"><span aria-hidden="true">🔥</span> <b id="hero-streak">0</b> jours</div>
-              <div class="pill"><span aria-hidden="true">✨</span> <b id="hero-points">0</b> points</div>
+              <div class="pill"><span aria-hidden="true">🌿</span> <b id="hero-regularite">0 %</b> sur 30 j</div>
             </div>
           </div>
         </div>
@@ -116,33 +116,59 @@
             <span class="stat__label">jours d'affilée</span>
           </div>
           <div class="card stat">
-            <span class="stat__icon" aria-hidden="true">✨</span>
-            <b class="stat__value" id="st-points">0</b>
-            <span class="stat__label">points</span>
+            <span class="stat__icon" aria-hidden="true">🏔️</span>
+            <b class="stat__value" id="st-best">0</b>
+            <span class="stat__label">meilleure série</span>
           </div>
           <div class="card stat">
-            <span class="stat__icon" aria-hidden="true">✅</span>
-            <b class="stat__value" id="st-total">0</b>
-            <span class="stat__label">actes accomplis</span>
+            <span class="stat__icon" aria-hidden="true">🌿</span>
+            <b class="stat__value" id="st-regularite">0 %</b>
+            <span class="stat__label">de régularité sur 30 jours</span>
           </div>
           <div class="card stat">
             <span class="stat__icon" aria-hidden="true">🕌</span>
-            <b class="stat__value" id="st-prayers">0</b>
-            <span class="stat__label">prières cochées</span>
+            <b class="stat__value" id="st-prieres">0 %</b>
+            <span class="stat__label">des prières sur 30 jours</span>
           </div>
         </div>
 
-        <h2 class="section-title">Ces 7 derniers jours</h2>
+        <h2 class="section-title">
+          Ces 7 derniers jours
+          <span class="section-title__hint">part de la journée accomplie</span>
+        </h2>
         <div class="card">
           <div class="chart" id="chart" role="img" aria-label="Graphique des 7 derniers jours"></div>
+        </div>
+
+        <h2 class="section-title">
+          Ton mois
+          <span class="section-title__hint" id="month-name"></span>
+        </h2>
+        <div class="card">
+          <div class="month" id="month" role="img" aria-label="Grille du mois"></div>
+          <div class="month__legend" aria-hidden="true">
+            <i class="dot dot--rien"></i><span>Rien</span>
+            <i class="dot dot--partiel"></i><span>Commencé</span>
+            <i class="dot dot--complet"></i><span>Journée entière</span>
+          </div>
+        </div>
+
+        <h2 class="section-title">
+          Chaque intention
+          <span class="section-title__hint">sur 30 jours</span>
+        </h2>
+        <div class="card list" id="regularites"></div>
+        <div class="empty empty--small" id="regularites-empty" hidden>
+          <p class="empty__text">Tes intentions apparaîtront ici dès que tu en auras coché quelques-unes.</p>
         </div>
 
         <h2 class="section-title">Tes badges</h2>
         <div class="badges" id="badges"></div>
 
         <p class="note">
-          Ces chiffres ne sont visibles que par toi. Ils ne sont ni partagés,
-          ni comparés à ceux d'autres personnes — ton adoration ne regarde qu'Allah.
+          Ici, rien ne se compte en points : la valeur d'un acte ne se chiffre pas.
+          On regarde seulement la constance — et ces chiffres ne sont visibles que par
+          toi, ni partagés ni comparés à ceux d'autres personnes.
         </p>
         <div class="scroll__pad"></div>
       </div>
@@ -197,40 +223,43 @@
         <div class="card list">
           <label class="row row--switch">
             <span>
-              <b>Rappels</b>
+              <b id="lbl-notif">Rappels</b>
               <small id="notif-help">Recevoir des notifications douces</small>
             </span>
-            <input type="checkbox" id="set-notif" class="switch">
+            <input type="checkbox" id="set-notif" class="switch"
+                   aria-labelledby="lbl-notif" aria-describedby="notif-help">
           </label>
           <label class="row row--switch">
             <span>
-              <b>Mode sombre</b>
-              <small>Plus reposant le soir</small>
+              <b id="lbl-dark">Mode sombre</b>
+              <small id="dark-help">Plus reposant le soir</small>
             </span>
-            <input type="checkbox" id="set-dark" class="switch">
+            <input type="checkbox" id="set-dark" class="switch"
+                   aria-labelledby="lbl-dark" aria-describedby="dark-help">
           </label>
           <label class="row row--switch">
             <span>
-              <b>Silence la nuit</b>
-              <small>Aucun rappel entre 22h et 6h</small>
+              <b id="lbl-quiet">Silence la nuit</b>
+              <small id="quiet-help">Aucun rappel entre 22h et 6h</small>
             </span>
-            <input type="checkbox" id="set-quiet" class="switch" checked>
+            <input type="checkbox" id="set-quiet" class="switch" checked
+                   aria-labelledby="lbl-quiet" aria-describedby="quiet-help">
           </label>
         </div>
 
         <div class="card list">
-          <button class="row row--action" id="btn-demo">
+          <button class="row row--action" id="btn-demo" aria-label="Charger des données d'exemple">
             <span><b>Charger des données d'exemple</b><small>12 jours d'historique pour voir les statistiques</small></span>
             <span aria-hidden="true">↺</span>
           </button>
-          <button class="row row--action" id="btn-clear">
+          <button class="row row--action" id="btn-clear" aria-label="Tout effacer">
             <span><b>Tout effacer</b><small>Repartir d'une page blanche</small></span>
             <span aria-hidden="true">🧹</span>
           </button>
         </div>
 
         <p class="note">
-          Ibadah Daily Planner — version 0.2.<br>
+          Ibadah Daily Planner — version 0.3.<br>
           Tes données restent sur cet appareil. Seul le hadith du jour est cherché en ligne.
         </p>
         <div class="scroll__pad"></div>
@@ -317,6 +346,9 @@
         <button class="menu-item" id="menu-edit">
           <span aria-hidden="true">✍️</span> Modifier cette intention
         </button>
+        <button class="menu-item" id="menu-dhikr">
+          <span aria-hidden="true">📿</span> Choisir des dhikr à mettre dedans
+        </button>
         <button class="menu-item" id="menu-delete">
           <span aria-hidden="true">🗑️</span> Retirer de ma liste
         </button>
@@ -332,6 +364,88 @@
           <button class="btn btn--ghost" id="confirm-no">Garder</button>
           <button class="btn btn--soft" id="confirm-yes">Retirer</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ FEUILLE : LIRE UN DHIKR ══════════════ -->
+    <div class="sheet-backdrop" id="lecture-backdrop" hidden></div>
+    <div class="sheet sheet--lecture" id="lecture" role="dialog" aria-modal="true" aria-labelledby="lecture-nom" hidden>
+      <div class="sheet__grab" aria-hidden="true"></div>
+      <h2 class="sheet__title" id="lecture-nom"></h2>
+      <p class="lecture__fois" id="lecture-fois"></p>
+
+      <p class="arabe" id="lecture-arabe" lang="ar" dir="rtl" hidden></p>
+      <p class="lecture__pho" id="lecture-pho" hidden></p>
+      <p class="lecture__trad" id="lecture-trad" hidden></p>
+      <p class="lecture__src" id="lecture-src" hidden></p>
+      <p class="lecture__warn" id="lecture-warn" hidden>
+        Ce texte n'a pas encore été relu par une personne de science.
+        Vérifie-le auprès de quelqu'un de confiance avant de t'y fier.
+      </p>
+
+      <div class="sheet__actions">
+        <button type="button" class="btn btn--ghost" id="lecture-close">Fermer</button>
+        <button type="button" class="btn btn--primary" id="lecture-done">C'est fait</button>
+      </div>
+    </div>
+
+    <!-- ══════════════ FEUILLE : ÉCRIRE SON PROPRE DHIKR ══════════════ -->
+    <div class="sheet-backdrop" id="perso-backdrop" hidden></div>
+    <div class="sheet" id="perso-sheet" role="dialog" aria-modal="true" aria-labelledby="perso-title" hidden>
+      <div class="sheet__grab" aria-hidden="true"></div>
+      <h2 class="sheet__title" id="perso-title">Écrire mon propre dhikr</h2>
+
+      <form id="perso-form" novalidate>
+        <label class="field">
+          <span class="field__label">Son nom</span>
+          <input type="text" id="p-nom" placeholder="Ex : Sourate Al-Kahf" maxlength="70" autocomplete="off">
+          <span class="field__error" id="p-nom-err" hidden>Écris d'abord un nom 🙂</span>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Combien de fois ?</span>
+          <input type="number" id="p-fois" min="1" max="1000" step="1" value="1" inputmode="numeric">
+        </label>
+
+        <div class="sheet__actions">
+          <button type="button" class="btn btn--ghost" id="perso-cancel">Annuler</button>
+          <button type="submit" class="btn btn--primary">Ajouter</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ══════════════ PANNEAU : BIBLIOTHÈQUE DE DHIKR ══════════════ -->
+    <div class="biblio" id="biblio" role="dialog" aria-modal="true" aria-labelledby="biblio-title" hidden>
+      <header class="topbar topbar--back">
+        <button class="icon-btn" id="biblio-back" aria-label="Revenir à ma liste">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <div>
+          <p class="topbar__date" id="biblio-for">—</p>
+          <h1 class="topbar__title" id="biblio-title">Choisir des dhikr</h1>
+        </div>
+      </header>
+
+      <div class="scroll">
+        <div class="warn" id="biblio-warn" hidden>
+          <b>Textes en cours de relecture</b>
+          Ces invocations ont été rassemblées automatiquement. Elles n'ont pas
+          encore été validées par une personne de science : fais-les vérifier
+          avant de t'appuyer dessus ou de les partager.
+        </div>
+
+        <div class="chips" id="biblio-cats" role="radiogroup" aria-label="Catégories de dhikr"></div>
+        <div id="biblio-list"></div>
+
+        <button class="perso-btn" id="biblio-perso">
+          <span aria-hidden="true">✍️</span> Écrire mon propre dhikr
+        </button>
+        <div class="scroll__pad"></div>
+      </div>
+
+      <div class="biblio__bar">
+        <span class="biblio__count" id="biblio-count">Aucun dhikr choisi</span>
+        <button class="btn btn--primary" id="biblio-save">Enregistrer</button>
       </div>
     </div>
 
@@ -377,8 +491,9 @@
 
   </div>
 
-  <script src="store.js?v=c76f621e"></script>
-  <script src="app.js?v=c76f621e"></script>
-  <script src="rappels.js?v=c76f621e"></script>
+  <script src="store.js?v=4502f4b5"></script>
+  <script src="adhkar.js?v=4502f4b5"></script>
+  <script src="app.js?v=4502f4b5"></script>
+  <script src="rappels.js?v=4502f4b5"></script>
 </body>
 </html>

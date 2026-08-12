@@ -23,6 +23,7 @@ FICHIERS = [
     "index.html",
     "styles.css",
     "store.js",
+    "adhkar.js",
     "app.js",
     "rappels.js",
     "sw.js",
@@ -46,7 +47,7 @@ HEADERS = """/sw.js
 
 
 # Fichiers dont le navigateur pourrait garder une vieille copie.
-ESTAMPILLES = ["styles.css", "store.js", "app.js", "rappels.js"]
+ESTAMPILLES = ["styles.css", "store.js", "adhkar.js", "app.js", "rappels.js"]
 
 
 def estampiller(dossier):

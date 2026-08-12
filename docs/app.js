@@ -9,9 +9,29 @@ const $  = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 const CHECK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
+/* Le chevron est enveloppé dans un <span> : une rotation CSS posée
+   directement sur une balise <svg> racine n'est pas appliquée de la
+   même façon partout, alors que sur un <span> elle marche toujours. */
+const CHEV_SVG  = '<span class="task__chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>';
+const FLECHE_SVG = '<svg class="sub__voir" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
 // Le jour affiché (la vraie date, ou celle simulée par ?jour=...)
 const JOUR = Store.aujourdhui();
+
+/* La bibliothèque de dhikr est un fichier que l'on corrige à la main.
+   S'il manque ou s'il est abîmé, l'application doit continuer de
+   fonctionner — simplement sans bibliothèque. */
+const BIBLIO = (typeof ADHKAR !== 'undefined' && Array.isArray(ADHKAR)) ? ADHKAR : [];
+const BIBLIO_CATS = (typeof ADHKAR_CATEGORIES !== 'undefined' && Array.isArray(ADHKAR_CATEGORIES))
+  ? ADHKAR_CATEGORIES : [];
+
+function dhikrDeLaBiblio(ref) {
+  return ref ? (BIBLIO.find(d => d.id === ref) || null) : null;
+}
+
+// Quelles intentions sont dépliées à l'écran. Volontairement non sauvegardé :
+// chaque jour on repart d'une liste refermée, donc lisible.
+const depliees = new Set();
 
 /* ─── Thème clair / sombre ──────────────────────────────── */
 function appliquerTheme(sombre) {
@@ -119,30 +139,68 @@ function afficherTaches() {
 }
 
 function ligneTache(t, faite) {
+  const sous = Store.sousTachesDe(t);
   const li = document.createElement('li');
   li.className = 'task' + (faite ? ' is-done' : '');
   li.dataset.id = t.id;
 
   const meta = [`<span class="task__tag">${echapper(Store.libelleFrequence(t))}</span>`];
   if (t.heure) meta.push(`<span>🔔 ${t.heure}</span>`);
-  if (!faite)  meta.push(`<span class="task__pts">+${Store.PTS.tache}</span>`);
 
-  li.innerHTML = `
-    <button class="task__hit" aria-pressed="${faite}"
-            aria-label="${echapper(t.nom)}${faite ? ' : terminée' : ' : à faire'}">
-      <span class="check">${CHECK_SVG}</span>
-      <span class="task__body">
-        <span class="task__name">${echapper(t.nom)}</span>
-        <span class="task__meta">${meta.join('')}</span>
-      </span>
-    </button>
+  const corps = `
+    <span class="task__body">
+      <span class="task__name">${echapper(t.nom)}</span>
+      <span class="task__meta">${meta.join('')}</span>
+    </span>`;
+
+  const plus = `
     <button class="task__more" aria-label="Options pour ${echapper(t.nom)}">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>
       </svg>
     </button>`;
 
-  li.querySelector('.task__hit').addEventListener('click', () => basculer(t, li, faite));
+  if (!sous.length) {
+    /* Intention simple : toute la ligne coche, comme avant. */
+    li.innerHTML = `
+      <div class="task__ligne">
+        <button class="task__hit" aria-pressed="${faite}"
+                aria-label="${echapper(t.nom)}${faite ? ' : terminée' : ' : à faire'}">
+          <span class="check">${CHECK_SVG}</span>
+          ${corps}
+        </button>
+        ${plus}
+      </div>`;
+    li.querySelector('.task__hit').addEventListener('click', () => basculer(t, li));
+
+  } else {
+    /* Intention qui contient des dhikr : le rond coche tout, le reste déplie. */
+    const av = Store.avancement(t, JOUR);
+    const ouverte = depliees.has(t.id);
+    const idListe = 'subs-' + t.id;
+    if (ouverte) li.classList.add('is-open');
+
+    li.innerHTML = `
+      <div class="task__ligne">
+        <button class="task__check" aria-pressed="${faite}"
+                aria-label="${faite ? 'Tout décocher' : 'Tout cocher'} : ${echapper(t.nom)}">
+          <span class="check">${CHECK_SVG}</span>
+        </button>
+        <button class="task__hit task__hit--groupe" aria-expanded="${ouverte}" aria-controls="${idListe}"
+                aria-label="${echapper(t.nom)} : ${av.faits} sur ${av.total}, ouvrir la liste">
+          ${corps}
+          <span class="task__prog">${av.faits} / ${av.total}</span>
+          ${CHEV_SVG}
+        </button>
+        ${plus}
+      </div>
+      <ul class="subs" id="${idListe}"${ouverte ? '' : ' hidden'}></ul>`;
+
+    remplirSous(li.querySelector('.subs'), t, li);
+    li.querySelector('.task__check').addEventListener('click', () => basculer(t, li));
+    li.querySelector('.task__hit').addEventListener('click', () => deplier(t, li));
+  }
+
   li.querySelector('.task__more').addEventListener('click', e => {
     e.stopPropagation();
     ouvrirMenu(t);
@@ -150,14 +208,93 @@ function ligneTache(t, faite) {
   return li;
 }
 
-function basculer(t, el, etaitFaite) {
+function deplier(t, li) {
+  const etaitOuverte = depliees.has(t.id);
+  if (etaitOuverte) depliees.delete(t.id); else depliees.add(t.id);
+
+  li.classList.toggle('is-open', !etaitOuverte);
+  li.querySelector('.subs').hidden = etaitOuverte;
+  li.querySelector('.task__hit').setAttribute('aria-expanded', String(!etaitOuverte));
+}
+
+function remplirSous(ul, t, liParent) {
+  ul.innerHTML = '';
+
+  Store.sousTachesDe(t).forEach(s => {
+    const fait = Store.sousFaite(s.id, JOUR);
+    const d    = dhikrDeLaBiblio(s.refBiblio);
+
+    const li = document.createElement('li');
+    li.className = 'sub' + (fait ? ' is-done' : '');
+    // L'état ne va PAS dans le nom : il est porté par aria-pressed, qui lui
+    // se met à jour au moment du clic. Un nom qui dirait « à faire » resterait
+    // faux dès la première coche.
+    li.innerHTML = `
+      <button class="sub__coche" aria-pressed="${fait}" aria-label="${echapper(s.nom)}">
+        <span class="sub__rond">${CHECK_SVG}</span>
+      </button>
+      <button class="sub__hit" aria-label="${d ? 'Lire le texte : ' + echapper(s.nom) : echapper(s.nom)}">
+        <span class="sub__nom">${echapper(s.nom)}</span>
+        <span class="sub__fois">${s.repetitions > 1 ? s.repetitions + '×' : ''}</span>
+        ${d ? FLECHE_SVG : ''}
+      </button>`;
+
+    li.querySelector('.sub__coche').addEventListener('click', () => basculerSous(t, s, li, liParent));
+    li.querySelector('.sub__hit').addEventListener('click', () => {
+      if (d) ouvrirLecture(t, s, d, li, liParent);
+      else   basculerSous(t, s, li, liParent);
+    });
+    ul.appendChild(li);
+  });
+
+  const ajout = document.createElement('li');
+  ajout.className = 'sub sub--ajout';
+  ajout.innerHTML = `
+    <button class="sub__ajout">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Ajouter un dhikr
+    </button>`;
+  ajout.querySelector('.sub__ajout').addEventListener('click', () => ouvrirBiblio(t));
+  ul.appendChild(ajout);
+}
+
+/* Cocher un dhikr. Si c'était le dernier, l'intention entière se coche
+   toute seule — c'est store.js qui s'en charge, on ne fait que l'afficher. */
+function basculerSous(t, s, liSous, liParent) {
+  const avant = Store.estFaite(t, JOUR);
+  const coche = Store.basculerSous(t, s.id, JOUR);
+  const apres = Store.estFaite(t, JOUR);
+
+  if (apres && !avant) {
+    depliees.delete(t.id);
+    liParent.classList.add('is-done');
+    toast(`${t.nom} : tout est accompli 🤍`);
+    setTimeout(() => liParent.classList.add('is-leaving'), 340);
+    setTimeout(afficherTaches, 700);
+    return;
+  }
+  if (!apres && avant) { afficherTaches(); return; }
+
+  // Rien de spectaculaire : on met simplement la ligne à jour sur place.
+  liSous.classList.toggle('is-done', coche);
+  liSous.querySelector('.sub__coche').setAttribute('aria-pressed', String(coche));
+
+  const av = Store.avancement(t, JOUR);
+  liParent.querySelector('.task__prog').textContent = `${av.faits} / ${av.total}`;
+  liParent.querySelector('.task__hit').setAttribute('aria-label',
+    `${t.nom} : ${av.faits} sur ${av.total}, ouvrir la liste`);
+  afficherEnTete();
+}
+
+function basculer(t, li) {
   const cochee = Store.basculerTache(t, JOUR);
 
   if (cochee) {
     // Petite animation : la tâche se coche, puis glisse vers « Terminées »
-    el.classList.add('is-done');
+    li.classList.add('is-done');
+    depliees.delete(t.id);
     toast(ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
-    setTimeout(() => el.classList.add('is-leaving'), 340);
+    setTimeout(() => li.classList.add('is-leaving'), 340);
     setTimeout(afficherTaches, 700);
   } else {
     afficherTaches();
@@ -166,7 +303,6 @@ function basculer(t, el, etaitFaite) {
 
 function afficherEnTete() {
   const p = Store.progression(JOUR);
-  const total = Store.totaux();
 
   $('#ring-percent').textContent = p.pourcent + '%';
   $('#ring-sub').textContent     = `${p.faits} / ${p.total} accomplis`;
@@ -174,8 +310,8 @@ function afficherEnTete() {
   $('#ring').setAttribute('aria-label',
     `Progression du jour : ${p.pourcent} pour cent, ${p.faits} sur ${p.total}`);
 
-  $('#hero-streak').textContent = Store.serie();
-  $('#hero-points').textContent = total.points.toLocaleString('fr-FR');
+  $('#hero-streak').textContent     = Store.serie();
+  $('#hero-regularite').textContent = Store.regulariteGlobale().pourcent + ' %';
 
   $('#hero-msg').textContent =
     p.pourcent === 0  ? 'Une nouvelle journée t\'est offerte.' :
@@ -185,46 +321,110 @@ function afficherEnTete() {
                         'Journée complète — qu\'Allah accepte de toi 🤍';
 }
 
-/* ─── Écran « Progrès » ─────────────────────────────────── */
+/* ─── Écran « Progrès » ─────────────────────────────────────
+   Aucun point nulle part : on ne mesure que la constance. */
+
 const BADGES = [
-  { ico: '🌱', nom: '7 jours d\'affilée',  gagne: (t, s) => s >= 7 },
-  { ico: '🌳', nom: '30 jours d\'affilée', gagne: (t, s) => s >= 30 },
-  { ico: '💯', nom: '100 actes',           gagne: (t)    => t.actes >= 100 },
-  { ico: '🕌', nom: '50 prières',          gagne: (t)    => t.prieres >= 50 },
-  { ico: '📖', nom: '500 points',          gagne: (t)    => t.points >= 500 },
-  { ico: '⭐', nom: '2000 points',         gagne: (t)    => t.points >= 2000 }
+  { ico: '🌱', nom: '7 jours d\'affilée',          gagne: c => c.meilleure >= 7 },
+  { ico: '🌳', nom: '30 jours d\'affilée',         gagne: c => c.meilleure >= 30 },
+  { ico: '🏔️', nom: '60 jours d\'affilée',         gagne: c => c.meilleure >= 60 },
+  { ico: '🕌', nom: 'Fajr tenu tout un mois',      gagne: c => c.fajr.prevus >= 28 && c.fajr.pourcent === 100 },
+  { ico: '🤍', nom: 'Une intention tenue 40 fois', gagne: c => c.fidelite >= 40 },
+  { ico: '📖', nom: '10 journées entières',        gagne: c => c.completes >= 10 }
 ];
 
+const LETTRES_SEMAINE = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
 function afficherStats() {
-  const t = Store.totaux();
-  const s = Store.serie();
+  const serie = Store.serie();
+  const reg   = Store.regulariteGlobale();
+  const pri   = Store.regularitePrieres();
 
-  $('#st-streak').textContent  = s;
-  $('#st-points').textContent  = t.points.toLocaleString('fr-FR');
-  $('#st-total').textContent   = t.actes;
-  $('#st-prayers').textContent = t.prieres;
+  $('#st-streak').textContent     = serie;
+  $('#st-best').textContent       = Store.meilleureSerie();
+  $('#st-regularite').textContent = reg.pourcent + ' %';
+  $('#st-prieres').textContent    = pri.pourcent + ' %';
 
+  afficherGraphique();
+  afficherMois();
+  afficherRegularites();
+
+  const contexte = {
+    serie,
+    meilleure: Store.meilleureSerie(),
+    fajr:      Store.regularitePriere('Fajr'),
+    fidelite:  Store.meilleureFidelite(),
+    completes: Store.journeesCompletes()
+  };
+
+  $('#badges').innerHTML = BADGES.map(b => `
+    <div class="badge ${b.gagne(contexte) ? 'is-won' : ''}">
+      <span class="badge__ico" aria-hidden="true">${b.ico}</span>
+      <span class="badge__name">${b.nom}</span>
+    </div>`).join('');
+}
+
+function afficherGraphique() {
   const jours = Store.septDerniersJours();
-  const max   = Math.max(...jours.map(j => j.valeur), 1);
 
   $('#chart').innerHTML = jours.map(j => `
     <div class="chart__col">
       <div class="chart__track">
         <div class="chart__bar ${j.estCeJour ? '' : 'chart__bar--soft'}"
-             style="--v:${Math.max(0.035, j.valeur / max).toFixed(3)}"
-             title="${j.cle} : ${j.valeur} acte(s)"></div>
+             style="--v:${Math.max(0.035, j.part / 100).toFixed(3)}"
+             title="${j.cle} : ${j.part} % de la journée"></div>
       </div>
       <span class="chart__day">${j.lettre}</span>
     </div>`).join('');
 
   $('#chart').setAttribute('aria-label',
-    'Actes accomplis sur 7 jours : ' + jours.map(j => `${j.lettre} ${j.valeur}`).join(', '));
+    'Part de la journée accomplie sur 7 jours : ' +
+    jours.map(j => `${j.lettre} ${j.part} pour cent`).join(', '));
+}
 
-  $('#badges').innerHTML = BADGES.map(b => `
-    <div class="badge ${b.gagne(t, s) ? 'is-won' : ''}">
-      <span class="badge__ico" aria-hidden="true">${b.ico}</span>
-      <span class="badge__name">${b.nom}</span>
+function afficherMois() {
+  const cases = Store.grilleDuMois();
+  const d = Store.dateDepuisCle(JOUR);
+  $('#month-name').textContent = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const entete = LETTRES_SEMAINE
+    .map(l => `<div class="month__tete" aria-hidden="true">${l}</div>`).join('');
+
+  const grille = cases.map(c => {
+    if (!c) return '<div class="month__case month__case--vide" aria-hidden="true"></div>';
+    const ceJour = c.estCeJour ? ' month__case--ce-jour' : '';
+    if (c.part < 0) {
+      return `<div class="month__case month__case--futur${ceJour}" aria-hidden="true"></div>`;
+    }
+    const niveau = c.part === 0 ? '' : c.part === 100 ? ' month__case--complet' : ' month__case--partiel';
+    return `<div class="month__case${niveau}${ceJour}" title="${c.jour} : ${c.part} % de la journée"></div>`;
+  }).join('');
+
+  $('#month').innerHTML = entete + grille;
+
+  const faits = cases.filter(c => c && c.part > 0).length;
+  $('#month').setAttribute('aria-label',
+    `Grille du mois : ${faits} jours où quelque chose a été accompli.`);
+}
+
+function afficherRegularites() {
+  const liste = Store.toutesLesTaches()
+    .map(t => ({ t, r: Store.regularite(t) }))
+    .filter(x => x.r.prevus > 0)
+    .sort((a, b) => b.r.pourcent - a.r.pourcent);
+
+  $('#regularites').innerHTML = liste.map(x => `
+    <div class="reg">
+      <span class="reg__nom">${echapper(x.t.nom)}</span>
+      <span class="reg__barre" role="img"
+            aria-label="${x.r.faits} fois sur ${x.r.prevus} jours prévus">
+        <span class="reg__jauge" style="width:${x.r.pourcent}%"></span>
+      </span>
+      <span class="reg__val">${x.r.faits} / ${x.r.prevus}</span>
     </div>`).join('');
+
+  $('#regularites').hidden       = liste.length === 0;
+  $('#regularites-empty').hidden = liste.length > 0;
 }
 
 /* ─── Écran « Hadith » ──────────────────────────────────── */
@@ -348,7 +548,7 @@ function afficherInfos() {
     `<li><b>${i.tag}</b>${echapper(i.text)}</li>`).join('');
 }
 
-/* ─── Feuille « Ajouter / Modifier une tâche » ──────────── */
+/* ─── Feuille « Ajouter / Modifier une intention » ──────── */
 let frequenceChoisie = 'daily';
 let jourChoisi       = Store.dateDepuisCle(JOUR).getDay();
 let tacheEnEdition   = null;
@@ -385,7 +585,7 @@ function choisirFrequence(f) {
     c.classList.toggle('is-on', actif);
     c.setAttribute('aria-checked', actif);
   });
-  // Le choix du jour n'a de sens que pour une tâche hebdomadaire
+  // Le choix du jour n'a de sens que pour une intention hebdomadaire
   $('#f-day-wrap').hidden = (f !== 'weekly');
 }
 
@@ -398,7 +598,7 @@ function choisirJour(j) {
   });
 }
 
-/* ─── Menu d'une tâche : modifier / supprimer ───────────── */
+/* ─── Menu d'une intention : modifier / dhikr / supprimer ─ */
 let tacheDuMenu = null;
 
 function ouvrirMenu(t) {
@@ -414,6 +614,211 @@ function fermerMenu() {
   $('#menu-backdrop').hidden = true;
   $('#menu-sheet').hidden = true;
   tacheDuMenu = null;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   La bibliothèque de dhikr
+   ═══════════════════════════════════════════════════════════ */
+
+let biblioTache  = null;     // l'intention que l'on garnit
+let biblioCat    = 'matin';
+let biblioChoix  = [];       // la liste voulue à la sortie
+let biblioAvant  = new Map();// ce qui existait déjà, rangé par dhikr
+const biblioOuverts = new Set();
+
+function ouvrirBiblio(t) {
+  biblioTache = t;
+  biblioAvant = new Map();
+  biblioOuverts.clear();
+
+  biblioChoix = Store.sousTachesDe(t).map(s => {
+    const copie = { id: s.id, nom: s.nom, repetitions: s.repetitions, refBiblio: s.refBiblio };
+    if (s.refBiblio) biblioAvant.set(s.refBiblio, copie);
+    return copie;
+  });
+
+  biblioCat = categoriePour(t);
+  $('#biblio-for').textContent = t.nom;
+  // Le bandeau ne s'affiche que s'il reste au moins un texte non relu.
+  $('#biblio-warn').hidden = BIBLIO.every(d => d.verifie);
+
+  afficherBiblioCats();
+  afficherBiblio();
+  $('#biblio').hidden = false;
+  $('#biblio-back').focus();
+}
+
+function fermerBiblio() {
+  $('#biblio').hidden = true;
+  biblioTache = null;
+}
+
+/* On devine la bonne catégorie d'après le nom de l'intention :
+   « Adhkar du matin » ouvre directement sur les dhikr du matin. */
+function categoriePour(t) {
+  const n = t.nom.toLowerCase();
+  if (n.indexOf('matin') !== -1) return 'matin';
+  if (n.indexOf('soir') !== -1)  return 'soir';
+  if (n.indexOf('dormir') !== -1 || n.indexOf('coucher') !== -1 || n.indexOf('nuit') !== -1) return 'avant-dormir';
+  if (n.indexOf('prière') !== -1 || n.indexOf('priere') !== -1 || n.indexOf('salat') !== -1) return 'apres-priere';
+  return BIBLIO_CATS.length ? BIBLIO_CATS[0].id : 'matin';
+}
+
+function afficherBiblioCats() {
+  $('#biblio-cats').innerHTML = BIBLIO_CATS.map(c => `
+    <button type="button" class="chip ${c.id === biblioCat ? 'is-on' : ''}"
+            role="radio" aria-checked="${c.id === biblioCat}" data-cat="${c.id}">${c.nom}</button>`).join('');
+
+  $$('#biblio-cats .chip').forEach(b => b.addEventListener('click', () => {
+    biblioCat = b.dataset.cat;
+    afficherBiblioCats();
+    afficherBiblio();
+  }));
+}
+
+function afficherBiblio() {
+  const boite = $('#biblio-list');
+  boite.innerHTML = '';
+
+  const dhikrs = BIBLIO.filter(d => (d.categories || []).indexOf(biblioCat) !== -1);
+
+  if (!dhikrs.length) {
+    boite.innerHTML = '<p class="note">Aucun dhikr dans cette catégorie pour le moment.</p>';
+  }
+  dhikrs.forEach(d => boite.appendChild(ligneBiblio(d)));
+
+  // Les dhikr que l'utilisateur a écrits lui-même n'appartiennent à
+  // aucune catégorie : on les montre à part, pour pouvoir les retirer.
+  const perso = biblioChoix.filter(c => !c.refBiblio);
+  if (perso.length) {
+    const titre = document.createElement('h2');
+    titre.className = 'section-title';
+    titre.textContent = 'Tes propres dhikr';
+    boite.appendChild(titre);
+    perso.forEach(c => boite.appendChild(lignePerso(c)));
+  }
+
+  majCompteurBiblio();
+}
+
+function ligneBiblio(d) {
+  const choisi = biblioChoix.some(c => c.refBiblio === d.id);
+  const ouvert = biblioOuverts.has(d.id);
+
+  const el = document.createElement('div');
+  el.className = 'bib' + (choisi ? ' is-on' : '') + (ouvert ? ' is-open' : '');
+  el.innerHTML = `
+    <div class="bib__ligne">
+      <button class="bib__hit" aria-pressed="${choisi}"
+              aria-label="${echapper(d.nom)}${choisi ? ' : dans ma liste' : ' : à ajouter'}">
+        <span class="bib__box">${CHECK_SVG}</span>
+        <span class="bib__body">
+          <span class="bib__nom">${echapper(d.nom)}</span>
+          <span class="bib__src">${echapper(d.source)}</span>
+        </span>
+        <span class="bib__fois">${d.repetitions}×</span>
+      </button>
+      <button class="bib__voir" aria-expanded="${ouvert}" aria-label="Voir le texte de ${echapper(d.nom)}">
+        <span class="bib__chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+    </div>
+    <div class="bib__texte"${ouvert ? '' : ' hidden'}>${texteDuDhikr(d)}</div>`;
+
+  el.querySelector('.bib__hit').addEventListener('click', () => {
+    const i = biblioChoix.findIndex(c => c.refBiblio === d.id);
+    if (i !== -1) {
+      biblioChoix.splice(i, 1);
+    } else {
+      // S'il était déjà là avant, on récupère son identifiant : ce qui a
+      // été coché aujourd'hui n'est pas perdu.
+      biblioChoix.push(biblioAvant.get(d.id) ||
+        { nom: d.nom, repetitions: d.repetitions, refBiblio: d.id });
+    }
+    afficherBiblio();
+  });
+
+  el.querySelector('.bib__voir').addEventListener('click', () => {
+    if (biblioOuverts.has(d.id)) biblioOuverts.delete(d.id); else biblioOuverts.add(d.id);
+    afficherBiblio();
+  });
+
+  return el;
+}
+
+function lignePerso(c) {
+  const el = document.createElement('div');
+  el.className = 'bib is-on';
+  el.innerHTML = `
+    <div class="bib__ligne">
+      <button class="bib__hit" aria-pressed="true" aria-label="${echapper(c.nom)} : dans ma liste">
+        <span class="bib__box">${CHECK_SVG}</span>
+        <span class="bib__body">
+          <span class="bib__nom">${echapper(c.nom)}</span>
+          <span class="bib__src">Écrit par toi</span>
+        </span>
+        <span class="bib__fois">${c.repetitions}×</span>
+      </button>
+    </div>`;
+
+  el.querySelector('.bib__hit').addEventListener('click', () => {
+    const i = biblioChoix.indexOf(c);
+    if (i !== -1) biblioChoix.splice(i, 1);
+    afficherBiblio();
+  });
+  return el;
+}
+
+function texteDuDhikr(d) {
+  let html = '';
+  if (d.arabe)      html += `<p class="arabe" lang="ar" dir="rtl">${echapper(d.arabe)}</p>`;
+  if (d.phonetique) html += `<p class="lecture__pho">${echapper(d.phonetique)}</p>`;
+  if (d.traduction) html += `<p class="lecture__trad">${echapper(d.traduction)}</p>`;
+  if (!d.verifie) {
+    html += '<p class="lecture__warn">Texte pas encore relu par une personne de science.</p>';
+  }
+  return html || '<p class="lecture__trad">Ce dhikr n\'a pas encore de texte.</p>';
+}
+
+function majCompteurBiblio() {
+  const n = biblioChoix.length;
+  $('#biblio-count').textContent =
+    n === 0 ? 'Aucun dhikr choisi' : n === 1 ? '1 dhikr choisi' : n + ' dhikr choisis';
+}
+
+/* ─── Feuille de lecture d'un dhikr ─────────────────────── */
+let lectureCtx = null;
+
+function ouvrirLecture(t, s, d, liSous, liParent) {
+  // adhkar.js se corrige à la main : si un identifiant disparaît, on
+  // affiche la feuille sans texte plutôt que de casser l'application.
+  d = d || {};
+  lectureCtx = { t, s, liSous, liParent };
+
+  $('#lecture-nom').textContent  = s.nom;
+  $('#lecture-fois').textContent = s.repetitions > 1
+    ? `À répéter ${s.repetitions} fois` : 'Une fois';
+
+  remplir('#lecture-arabe', d.arabe);
+  remplir('#lecture-pho',   d.phonetique);
+  remplir('#lecture-trad',  d.traduction);
+  remplir('#lecture-src',   d.source);
+  $('#lecture-warn').hidden = !!d.verifie;
+
+  $('#lecture-done').textContent = Store.sousFaite(s.id, JOUR) ? 'Décocher' : 'C\'est fait';
+  $('#lecture-backdrop').hidden = false;
+  $('#lecture').hidden = false;
+}
+
+function remplir(sel, valeur) {
+  const el = $(sel);
+  el.textContent = valeur || '';
+  el.hidden = !valeur;
+}
+
+function fermerLecture() {
+  $('#lecture-backdrop').hidden = true;
+  $('#lecture').hidden = true;
+  lectureCtx = null;
 }
 
 /* ─── Utilitaire ────────────────────────────────────────── */
@@ -433,11 +838,17 @@ $('#sheet-cancel').addEventListener('click', fermerFeuille);
 $('#sheet-backdrop').addEventListener('click', fermerFeuille);
 $('#menu-backdrop').addEventListener('click', fermerMenu);
 $('#menu-cancel').addEventListener('click', fermerMenu);
+$('#lecture-backdrop').addEventListener('click', fermerLecture);
+$('#lecture-close').addEventListener('click', fermerLecture);
+$('#biblio-back').addEventListener('click', fermerBiblio);
 
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if (!$('#menu-sheet').hidden) fermerMenu();
-  else if (!$('#sheet').hidden) fermerFeuille();
+  if (!$('#perso-sheet').hidden)     fermerPerso();
+  else if (!$('#lecture').hidden)    fermerLecture();
+  else if (!$('#biblio').hidden)     fermerBiblio();
+  else if (!$('#menu-sheet').hidden) fermerMenu();
+  else if (!$('#sheet').hidden)      fermerFeuille();
 });
 
 $$('#f-freq .chip').forEach(c =>
@@ -489,6 +900,12 @@ $('#menu-edit').addEventListener('click', () => {
   ouvrirFeuille(t);
 });
 
+$('#menu-dhikr').addEventListener('click', () => {
+  const t = tacheDuMenu;
+  fermerMenu();
+  ouvrirBiblio(t);
+});
+
 $('#menu-delete').addEventListener('click', () => {
   $('#menu-choices').hidden = true;
   $('#menu-confirm').hidden = false;
@@ -507,6 +924,67 @@ $('#confirm-yes').addEventListener('click', () => {
   planifierRappels();
 });
 
+/* La bibliothèque */
+$('#biblio-save').addEventListener('click', () => {
+  const t = biblioTache;
+  Store.remplacerSousTaches(t.id, biblioChoix);
+  if (Store.sousTachesDe(t).length) depliees.add(t.id); else depliees.delete(t.id);
+  fermerBiblio();
+  afficherTaches();
+  planifierRappels();
+  toast('Ta liste de dhikr est à jour 🤍');
+});
+
+$('#lecture-done').addEventListener('click', () => {
+  if (!lectureCtx) return;
+  const { t, s, liSous, liParent } = lectureCtx;
+  fermerLecture();
+  basculerSous(t, s, liSous, liParent);
+});
+
+/* Écrire son propre dhikr */
+function ouvrirPerso() {
+  $('#p-nom').value  = '';
+  $('#p-fois').value = 1;
+  $('#p-nom-err').hidden = true;
+  $('#p-nom').classList.remove('has-error');
+  $('#perso-backdrop').hidden = false;
+  $('#perso-sheet').hidden = false;
+  setTimeout(() => $('#p-nom').focus(), 120);
+}
+
+function fermerPerso() {
+  $('#perso-backdrop').hidden = true;
+  $('#perso-sheet').hidden = true;
+}
+
+$('#biblio-perso').addEventListener('click', ouvrirPerso);
+$('#perso-cancel').addEventListener('click', fermerPerso);
+$('#perso-backdrop').addEventListener('click', fermerPerso);
+
+$('#perso-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const nom = $('#p-nom').value.trim();
+  if (!nom) {
+    $('#p-nom').classList.add('has-error');
+    $('#p-nom-err').hidden = false;
+    $('#p-nom').focus();
+    return;
+  }
+  biblioChoix.push({
+    nom,
+    repetitions: Math.max(1, Number($('#p-fois').value) || 1),
+    refBiblio: null
+  });
+  fermerPerso();
+  afficherBiblio();
+});
+
+$('#p-nom').addEventListener('input', () => {
+  $('#p-nom').classList.remove('has-error');
+  $('#p-nom-err').hidden = true;
+});
+
 $('#theme-toggle').addEventListener('click', () => appliquerTheme(!Store.reglages().sombre));
 $('#set-dark').addEventListener('change', e => appliquerTheme(e.target.checked));
 
@@ -518,6 +996,7 @@ $('#set-quiet').addEventListener('change', e => {
 $('#btn-demo').addEventListener('click', () => {
   Store.chargerDemo();
   appliquerTheme(Store.reglages().sombre);
+  depliees.clear();
   toutAfficher();
   aller('today');
   toast('Données d\'exemple chargées ↺');
@@ -526,6 +1005,7 @@ $('#btn-demo').addEventListener('click', () => {
 $('#btn-clear').addEventListener('click', () => {
   Store.repartirDeZero();
   appliquerTheme(Store.reglages().sombre);
+  depliees.clear();
   toutAfficher();
   aller('today');
   // Repartir de zéro, c'est comme une première ouverture
@@ -537,13 +1017,23 @@ $('#btn-clear').addEventListener('click', () => {
 $('#hadith-refresh').addEventListener('click', () => chargerHadith(true));
 
 /* ─── Écran de bienvenue et packs de départ ─────────────── */
+
+/* Quels dhikr arrivent déjà dans « Adhkar du matin » et « Adhkar du soir ».
+   L'utilisateur pourra en ajouter ou en retirer ensuite. */
+const DEPART = {
+  matin: ['ayat-kursi', 'sourate-ikhlas', 'sourate-falaq', 'sourate-nas',
+          'bika-asbahna', 'sayyid-istighfar', 'subhanallah-bihamdih-100', 'salat-nabi-10'],
+  soir:  ['ayat-kursi', 'sourate-ikhlas', 'sourate-falaq', 'sourate-nas',
+          'bika-amsayna', 'sayyid-istighfar', 'kalimat-tammat', 'salat-nabi-10']
+};
+
 const PACKS = [
   { id: 'coran',  ico: '📖', nom: 'Coran quotidien', desc: 'Une page chaque jour',
     taches: [{ nom: 'Lire une page de Coran', frequence: 'daily', heure: '07:30' }] },
 
-  { id: 'adhkar', ico: '🌅', nom: 'Adhkar matin et soir', desc: 'Les invocations du matin et du soir',
-    taches: [{ nom: 'Adhkar du matin', frequence: 'daily', heure: '08:00' },
-             { nom: 'Adhkar du soir',  frequence: 'daily', heure: '18:30' }] },
+  { id: 'adhkar', ico: '🌅', nom: 'Adhkar matin et soir', desc: 'Avec 8 dhikr déjà prêts dans chacun',
+    taches: [{ nom: 'Adhkar du matin', frequence: 'daily', heure: '08:00', depuis: 'matin' },
+             { nom: 'Adhkar du soir',  frequence: 'daily', heure: '18:30', depuis: 'soir' }] },
 
   { id: 'sunna',  ico: '🌙', nom: 'Sunna de la semaine', desc: 'Jeûne du lundi, sourate Al-Kahf le vendredi',
     taches: [{ nom: 'Jeûner le lundi',        frequence: 'weekly', heure: '', jourSemaine: 1 },
@@ -562,7 +1052,8 @@ const packsChoisis = new Set(['coran', 'adhkar']);
 function afficherPacks() {
   $('#packs').innerHTML = PACKS.map(p => `
     <button type="button" class="pack ${packsChoisis.has(p.id) ? 'is-on' : ''}"
-            data-pack="${p.id}" aria-pressed="${packsChoisis.has(p.id)}">
+            data-pack="${p.id}" aria-pressed="${packsChoisis.has(p.id)}"
+            aria-label="${echapper(p.nom)}">
       <span class="pack__ico" aria-hidden="true">${p.ico}</span>
       <span class="pack__body">
         <span class="pack__name">${p.nom}</span>
@@ -578,13 +1069,29 @@ function afficherPacks() {
   }));
 }
 
+/* Transforme un modèle de pack en intention prête à créer, en allant
+   chercher ses dhikr dans la bibliothèque quand il y en a. */
+function tacheDepuisModele(m) {
+  const t = {
+    nom: m.nom, frequence: m.frequence, heure: m.heure,
+    jourSemaine: m.jourSemaine === undefined ? null : m.jourSemaine
+  };
+  if (m.depuis) {
+    t.sousTaches = (DEPART[m.depuis] || [])
+      .map(id => dhikrDeLaBiblio(id))
+      .filter(Boolean)
+      .map(d => ({ nom: d.nom, repetitions: d.repetitions, refBiblio: d.id }));
+  }
+  return t;
+}
+
 function terminerBienvenue(avecPacks) {
   if (avecPacks) {
     // On ajoute dans l'ordre inverse : ajouterTache empile par le haut
     PACKS.filter(p => packsChoisis.has(p.id))
       .flatMap(p => p.taches)
       .reverse()
-      .forEach(t => Store.ajouterTache(t));
+      .forEach(m => Store.ajouterTache(tacheDepuisModele(m)));
   }
   Store.marquerAccueilli();
   $('#welcome').hidden = true;

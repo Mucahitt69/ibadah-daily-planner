@@ -15,6 +15,11 @@
   --primary-soft:#E2F0EA;
   --gold:        #806211;   /* or profond : le doré clair ne passait pas le contraste */
   --gold-soft:   #F6EEDA;
+  /* La grille du mois : commencé, puis journée entière.
+     Deux teintes seulement — avec quatre, les nuances basses se
+     confondaient avec le fond et devenaient illisibles. */
+  --niv-partiel: #4E9C81;
+  --niv-complet: #0B6E55;
   --shadow:      0 1px 2px rgba(23,33,29,.06), 0 8px 24px rgba(23,33,29,.06);
   --radius:      18px;
   --tap:         44px;
@@ -32,6 +37,8 @@ html[data-theme="dark"] {
   --primary-soft:#16332A;
   --gold:        #E0BC5E;
   --gold-soft:   #2C2617;
+  --niv-partiel: #2F7D62;
+  --niv-complet: #3DBE92;
   --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
 }
 
@@ -185,11 +192,12 @@ body {
 /* ─── Liste de tâches ────────────────────────────────── */
 .tasks { list-style: none; margin: 0; padding: 0; }
 .task {
-  display: flex; align-items: stretch;
+  display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--line);
   border-radius: 15px; margin-bottom: 9px; overflow: hidden;
   transition: transform .2s cubic-bezier(.22,1,.36,1), opacity .35s, border-color .2s;
 }
+.task__ligne { display: flex; align-items: stretch; }
 .task.is-leaving { opacity: 0; transform: translateX(28px) scale(.97); }
 
 /* La zone principale : tout sauf le bouton « … » */
@@ -228,7 +236,6 @@ body {
   background: var(--surface-2); border: 1px solid var(--line);
   border-radius: 6px; padding: 1px 6px; font-size: 11px;
 }
-.task__pts { font-size: 12px; color: var(--gold); font-weight: 700; }
 .tasks--done .task { opacity: .55; }
 .tasks--done .task__name { text-decoration: line-through; }
 
@@ -309,7 +316,9 @@ body {
   transform: scaleY(var(--v, 0));
   transition: transform .7s cubic-bezier(.22,1,.36,1);
 }
-.chart__bar--soft { background: var(--primary-soft); }
+/* Les jours passés sont plus discrets que celui d'aujourd'hui, mais pas
+   effacés : en vert très pâle ils devenaient invisibles sur la carte. */
+.chart__bar--soft { background: var(--niv-partiel); }
 .chart__day { font-size: 11px; color: var(--muted); }
 
 .badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; }
@@ -372,6 +381,224 @@ body {
 }
 .switch:checked { background: var(--primary); }
 .switch:checked::after { transform: translateX(20px); }
+
+/* ═══════════════════════════════════════════════════════
+   Les dhikr rangés dans une intention
+   ═══════════════════════════════════════════════════════ */
+
+/* Le rond d'une intention à dhikr est un bouton séparé : il coche
+   tout d'un coup, alors que le reste de la ligne déplie la liste. */
+.task__check {
+  flex: none; width: 46px; background: none; border: none;
+  display: grid; place-items: center; cursor: pointer;
+  transition: transform .2s cubic-bezier(.16,1,.3,1);
+}
+.task__check:active { transform: scale(.9); }
+.task__hit--groupe { padding-left: 0; gap: 10px; }
+
+.task__prog {
+  flex: none; background: var(--primary-soft); color: var(--primary);
+  border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.task__chev {
+  flex: none; width: 18px; height: 18px; margin-right: 2px;
+  display: grid; place-items: center;
+  transition: transform .22s cubic-bezier(.16,1,.3,1);
+}
+.task__chev svg {
+  width: 18px; height: 18px;
+  stroke: var(--muted); stroke-width: 2.2; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.task.is-open .task__chev { transform: rotate(180deg); }
+
+.subs {
+  list-style: none; margin: 0; padding: 0;
+  background: var(--surface-2); border-top: 1px dashed var(--line);
+}
+.sub { display: flex; align-items: stretch; border-top: 1px dashed var(--line); }
+.sub:first-child { border-top: none; }
+
+.sub__coche {
+  flex: none; width: 46px; padding-left: 14px; background: none; border: none;
+  display: grid; place-items: center; cursor: pointer;
+}
+.sub__rond {
+  width: 19px; height: 19px; border-radius: 50%;
+  border: 2px solid var(--line); display: grid; place-items: center;
+  transition: background .2s, border-color .2s, transform .25s cubic-bezier(.16,1,.3,1);
+}
+.sub__rond svg {
+  width: 11px; height: 11px; stroke: var(--primary-ink); stroke-width: 3.4;
+  fill: none; stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0; transition: opacity .18s;
+}
+.sub.is-done .sub__rond { background: var(--primary); border-color: var(--primary); transform: scale(1.08); }
+.sub.is-done .sub__rond svg { opacity: 1; }
+
+.sub__hit {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px;
+  padding: 10px 12px 10px 0; min-height: var(--tap);
+  background: none; border: none; font: inherit; color: inherit;
+  text-align: left; cursor: pointer;
+}
+.sub__nom { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.35; }
+.sub.is-done .sub__nom { text-decoration: line-through; color: var(--muted); }
+.sub__fois {
+  flex: none; font-size: 11.5px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.sub__voir { flex: none; width: 14px; height: 14px; stroke: var(--muted); stroke-width: 2.4; fill: none; stroke-linecap: round; }
+
+.sub--ajout { border-top: 1px dashed var(--line); }
+.sub__ajout {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 11px 12px 11px 22px; min-height: var(--tap);
+  background: none; border: none; font: inherit; font-size: 13px;
+  color: var(--primary); text-align: left; cursor: pointer;
+}
+.sub__ajout svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; }
+
+/* ═══════════════════════════════════════════════════════
+   La grille du mois et la régularité
+   ═══════════════════════════════════════════════════════ */
+
+.month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.month__tete { font-size: 10.5px; color: var(--muted); text-align: center; padding-bottom: 2px; }
+.month__case { aspect-ratio: 1; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line); }
+.month__case--vide { background: none; border: none; }
+.month__case--partiel { background: var(--niv-partiel); border-color: var(--niv-partiel); }
+.month__case--complet { background: var(--niv-complet); border-color: var(--niv-complet); }
+.month__case--futur { background: none; border-style: dashed; }
+.month__case--ce-jour { outline: 2px solid var(--gold); outline-offset: 1.5px; }
+
+.month__legend {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 6px;
+  margin-top: 14px; font-size: 11px; color: var(--muted);
+}
+.month__legend .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.dot--rien    { background: var(--surface-2); border: 1px solid var(--line); }
+.dot--partiel { background: var(--niv-partiel); }
+.dot--complet { background: var(--niv-complet); }
+
+.reg { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
+.reg:first-child { border-top: none; }
+.reg__nom { flex: 1; min-width: 0; font-size: 14px; }
+.reg__barre { flex: none; width: 70px; height: 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.reg__jauge { height: 100%; background: var(--primary); border-radius: 999px; transition: width .6s cubic-bezier(.22,1,.36,1); }
+.reg__val { flex: none; width: 52px; text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.empty--small { padding: 16px 20px; }
+.empty--small .empty__text { margin: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   La bibliothèque de dhikr
+   ═══════════════════════════════════════════════════════ */
+
+.biblio {
+  position: absolute; inset: 0; z-index: 30;
+  background: var(--bg); display: flex; flex-direction: column;
+  animation: glisse .26s cubic-bezier(.22,1,.36,1);
+}
+@keyframes glisse { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+
+.topbar--back { align-items: center; justify-content: flex-start; }
+.topbar--back .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+.biblio__bar {
+  flex: none; display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line); background: var(--surface);
+}
+.biblio__count { flex: 1; font-size: 13px; color: var(--muted); }
+
+.warn {
+  background: var(--gold-soft); border: 1px solid var(--gold);
+  border-radius: 14px; padding: 12px 14px; margin: 4px 0 14px;
+  font-size: 13px; line-height: 1.5;
+}
+.warn b { display: block; color: var(--gold); margin-bottom: 3px; }
+
+#biblio-cats { margin-bottom: 12px; }
+
+.bib { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 8px; overflow: hidden; }
+.bib__ligne { display: flex; align-items: stretch; }
+.bib__hit {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 11px;
+  padding: 11px 8px 11px 12px; min-height: var(--tap);
+  background: none; border: none; font: inherit; color: inherit;
+  text-align: left; cursor: pointer;
+}
+.bib__box {
+  flex: none; width: 22px; height: 22px; border-radius: 7px;
+  border: 2px solid var(--line); display: grid; place-items: center;
+  transition: background .2s, border-color .2s;
+}
+.bib__box svg { width: 13px; height: 13px; stroke: var(--primary-ink); stroke-width: 3.2; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity .18s; }
+.bib.is-on .bib__box { background: var(--primary); border-color: var(--primary); }
+.bib.is-on .bib__box svg { opacity: 1; }
+
+.bib__body { flex: 1; min-width: 0; }
+.bib__nom { display: block; font-size: 14.5px; font-weight: 600; }
+.bib__src { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.bib__fois { flex: none; font-size: 11px; color: var(--gold); background: var(--gold-soft); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+
+.bib__voir {
+  flex: none; width: var(--tap); background: none; border: none;
+  border-left: 1px solid var(--line); color: var(--muted); cursor: pointer;
+  display: grid; place-items: center;
+}
+.bib__chev { display: grid; place-items: center; width: 16px; height: 16px; transition: transform .22s cubic-bezier(.16,1,.3,1); }
+.bib__chev svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.bib.is-open .bib__chev { transform: rotate(180deg); }
+.bib__texte { padding: 4px 14px 14px; border-top: 1px dashed var(--line); background: var(--surface-2); }
+
+.perso-btn {
+  width: 100%; background: var(--surface-2); border: 1.5px dashed var(--line);
+  border-radius: 14px; padding: 14px; min-height: var(--tap);
+  font: inherit; font-size: 14px; color: var(--primary);
+  cursor: pointer; margin-top: 6px;
+  transition: border-color .2s, transform .15s;
+}
+.perso-btn:active { transform: scale(.98); }
+
+/* ═══════════════════════════════════════════════════════
+   Le texte d'un dhikr
+   ═══════════════════════════════════════════════════════ */
+
+.arabe {
+  font-family: "Amiri", "Scheherazade New", "Noto Naskh Arabic",
+               "Traditional Arabic", "Geeza Pro", "Segoe UI", serif;
+  font-size: 21px; line-height: 2.15; text-align: right;
+  margin: 14px 0 16px; word-break: normal; overflow-wrap: break-word;
+}
+.sheet--lecture { max-height: 90%; }
+/* Ayat al-Kursi fait plusieurs écrans de haut : sans cela, il faudrait
+   faire défiler tout le texte pour retrouver le bouton « C'est fait ».
+   Les deux boutons restent donc collés en bas de la feuille. */
+.sheet--lecture .sheet__actions {
+  position: sticky; bottom: 0;
+  background: var(--surface);
+  padding: 12px 0 2px; margin-top: 10px;
+  box-shadow: 0 -10px 14px -8px var(--surface);
+}
+.lecture__fois {
+  display: inline-block; margin: 0; font-size: 12px; font-weight: 600;
+  color: var(--gold); background: var(--gold-soft);
+  border-radius: 999px; padding: 3px 11px;
+}
+.lecture__pho { margin: 0 0 12px; font-size: 14.5px; font-style: italic; color: var(--muted); line-height: 1.65; }
+.lecture__trad { margin: 0 0 14px; font-size: 15px; line-height: 1.65; }
+.lecture__src { margin: 0; font-size: 12.5px; color: var(--gold); font-weight: 600; }
+.lecture__warn {
+  margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--line);
+  font-size: 12.5px; color: var(--muted); font-style: italic; line-height: 1.5;
+}
+.bib__texte .arabe { font-size: 19px; margin: 10px 0 12px; }
+.bib__texte .lecture__pho,
+.bib__texte .lecture__trad { font-size: 13.5px; }
 
 /* ─── Feuille "ajouter" ──────────────────────────────── */
 .sheet-backdrop {
@@ -534,9 +761,10 @@ body {
   }
   /* Plus aucun glissement ni agrandissement */
   .task.is-leaving { transform: none; }
-  .check, .prayer__dot, .fab, .btn, .chip, .day, .task__hit, .pack { transform: none !important; }
-  .chart__bar { transition: none; }
+  .check, .prayer__dot, .fab, .btn, .chip, .day, .task__hit, .pack,
+  .task__check, .sub__rond, .perso-btn { transform: none !important; }
+  .chart__bar, .reg__jauge { transition: none; }
   .switch::after { transition: none; }
-  /* Les panneaux qui montaient du bas apparaissent en fondu */
-  .sheet, .welcome, .toast { animation: fade .14s ease !important; }
+  /* Les panneaux qui montaient du bas ou glissaient apparaissent en fondu */
+  .sheet, .welcome, .toast, .biblio { animation: fade .14s ease !important; }
 }
