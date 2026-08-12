@@ -2,6 +2,11 @@
 .claude/
 .impeccable/
 
+# Notes de travail : elles restent sur l'ordinateur de Mucahid.
+# HANDOFF.md liste ce qui n'est pas testé et ce qui bloque : c'est vrai,
+# mais ça donnerait une image incomplète à quelqu'un qui tomberait dessus.
+HANDOFF.md
+
 # Ancien dossier de publication et archives
 site/
 *.zip
