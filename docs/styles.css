@@ -158,6 +158,28 @@ body {
 }
 .pill b { color: var(--text); }
 
+/* ─── Date hégirienne, à côté de la date du jour ─────────
+   Volontairement plus discrète : c'est une estimation, elle ne doit
+   pas se présenter avec la même assurance que la date grégorienne.
+   Le point de séparation vit dans le ::before, pour disparaître avec
+   elle quand le navigateur ne sait pas la calculer. */
+.topbar__hijri { text-transform: none; opacity: .72; }
+.topbar__hijri::before { content: " · "; opacity: .6; }
+
+/* ─── Réglage « − 0 + » ──────────────────────────────── */
+.stepper { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.stepper button {
+  width: 32px; height: 32px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface);
+  color: var(--text); font: inherit; font-size: 17px; line-height: 1;
+  display: grid; place-items: center;
+}
+.stepper button:disabled { opacity: .35; cursor: default; }
+.stepper b {
+  min-width: 30px; text-align: center; font-size: 14px;
+  font-variant-numeric: tabular-nums; color: var(--muted);
+}
+
 /* ─── Titres de section ──────────────────────────────── */
 .section-title {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
@@ -165,6 +187,15 @@ body {
   text-transform: uppercase; letter-spacing: .9px; color: var(--muted);
 }
 .section-title__hint { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12px; }
+
+/* ─── Intertitres de rythme dans la liste du jour ────────
+   Plus discrets que les titres de section : ils séparent à
+   l'intérieur d'une liste, ils n'ouvrent pas une nouvelle partie. */
+.groupe-titre {
+  margin: 15px 2px 7px; font-size: 11.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .8px; color: var(--muted);
+}
+.groupe-titre:first-child { margin-top: 2px; }
 
 /* ─── Les 5 prières ──────────────────────────────────── */
 .prayers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }

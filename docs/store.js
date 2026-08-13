@@ -91,8 +91,68 @@ const Store = (function () {
       accueilli: false,          // l'écran de bienvenue a-t-il été passé ?
       taches:   [],
       journal:  {},              // { "2026-08-11": { taches:[3], prieres:["Fajr"], sous:[7,9] } }
-      reglages: { notif: false, sombre: false, silenceNuit: true }
+      reglages: { notif: false, sombre: false, silenceNuit: true, decalageHegire: 0 }
     };
+  }
+
+  /* ─── La date hégirienne ────────────────────────────────────
+     ⚠️  C'est une ESTIMATION, et elle doit le rester.
+
+     Le vrai calendrier dépend de l'observation de la lune : la
+     Mosquée de Paris peut annoncer un jour différent de tout calcul,
+     parfois la veille pour le lendemain. Aucun code ne peut aller
+     lire cette annonce — elle n'existe nulle part sous une forme
+     qu'un site peut consulter.
+
+     Le navigateur, lui, connaît plusieurs méthodes de calcul, et
+     elles ne sont pas d'accord entre elles : le 14 août 2026, elles
+     répondent 29 Safar, 1er ou 2 Rabi' al-Awwal. Trois jours d'écart.
+
+     D'où les deux règles tenues ici :
+       • on prend Umm al-Qura, la plus répandue, et on l'assume ;
+       • on offre un décalage réglable pour s'aligner sur sa mosquée.
+
+     Et surtout, ailleurs dans l'application : cette date ne doit
+     JAMAIS servir à dire « jeûne aujourd'hui ». Se tromper d'un jour
+     ferait commettre une erreur dans une adoration — c'est autrement
+     plus grave qu'un défaut d'affichage. */
+
+  const MOIS_HEGIRIENS = [
+    'Mouharram', 'Safar', 'Rabi\' al-Awwal', 'Rabi\' ath-Thani',
+    'Joumada al-Oula', 'Joumada ath-Thania', 'Rajab', 'Cha\'ban',
+    'Ramadan', 'Chawwal', 'Dhou al-Qi\'da', 'Dhou al-Hijja'
+  ];
+
+  const DECALAGE_MAX = 2;   // au-delà, ce n'est plus un ajustement
+
+  function decalageHegire() {
+    const d = Number(etat.reglages.decalageHegire);
+    if (!isFinite(d)) return 0;
+    return Math.max(-DECALAGE_MAX, Math.min(DECALAGE_MAX, Math.round(d)));
+  }
+
+  /* Renvoie { jour, mois, annee, texte } ou null si le navigateur ne
+     sait pas convertir — auquel cas l'application n'affiche rien du
+     tout plutôt qu'une date inventée. */
+  function dateHegirienne(cle) {
+    try {
+      const d = dateDepuisCle(cle || aujourdhui());
+      d.setDate(d.getDate() + decalageHegire());
+
+      const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn',
+        { day: 'numeric', month: 'numeric', year: 'numeric' }).formatToParts(d);
+
+      const v = {};
+      parts.forEach(p => { if (p.type !== 'literal') v[p.type] = p.value; });
+
+      const jour = Number(v.day), mois = Number(v.month), annee = Number(v.year);
+      if (!jour || !mois || !annee || mois < 1 || mois > 12) return null;
+
+      return { jour, mois, annee,
+               texte: `${jour} ${MOIS_HEGIRIENS[mois - 1]} ${annee}` };
+    } catch (e) {
+      return null;     // navigateur trop ancien : on se tait
+    }
   }
 
   /* Remet en forme une sauvegarde : on n'a jamais la garantie que
@@ -100,6 +160,11 @@ const Store = (function () {
   function normaliser(brut) {
     const e = Object.assign(vide(), brut);
     e.version = 3;
+
+    // Object.assign remplace le bloc « reglages » en entier : une sauvegarde
+    // écrite avant l'ajout d'un réglage arriverait donc sans lui. On repose
+    // les valeurs par défaut dessous, et ce qui a été sauvegardé par-dessus.
+    e.reglages = Object.assign(vide().reglages, e.reglages);
 
     e.taches = (e.taches || []).filter(Boolean).map(t => {
       if (!Array.isArray(t.sousTaches)) t.sousTaches = [];
@@ -264,8 +329,24 @@ const Store = (function () {
     return !Object.keys(etat.journal).some(c => etat.journal[c].taches.includes(t.id));
   }
 
+  /* Dans quel ordre les rythmes se suivent à l'écran. Le plus fréquent
+     d'abord : ce qu'on fait tous les jours doit tomber sous les yeux en
+     premier, et les rendez-vous rares se rangent en bas. */
+  const ORDRE_FREQUENCE = { daily: 0, weekly: 1, monthly: 2, once: 3 };
+
+  function rangDe(t) {
+    const r = ORDRE_FREQUENCE[t && t.frequence];
+    return r === undefined ? 9 : r;     // un rythme inconnu passe en dernier
+  }
+
+  /* Les intentions arrivaient dans leur ordre de création : une
+     quotidienne, puis une mensuelle, puis encore une quotidienne. On les
+     rassemble par rythme, et à rythme égal on garde l'ordre de création —
+     sinon la liste se réorganiserait sous les doigts à chaque ajout. */
   function tachesDuJour(cle) {
-    return etat.taches.filter(t => estAuProgramme(t, cle));
+    return etat.taches
+      .filter(t => estAuProgramme(t, cle))
+      .sort((a, b) => (rangDe(a) - rangDe(b)) || ((a.id || 0) - (b.id || 0)));
   }
 
   // Ce qui était prévu ce jour-là, retraits compris : sert aux statistiques.
@@ -929,6 +1010,7 @@ const Store = (function () {
     ajouterTache, modifierTache, supprimerTache, tache,
     toutesLesTaches: () => etat.taches.filter(t => t.active),
     reglages, reglerOption,
+    dateHegirienne, decalageHegire, DECALAGE_MAX,
     estAccueilli, marquerAccueilli,
     repartirDeZero, chargerDemo,
     exporter, importer,

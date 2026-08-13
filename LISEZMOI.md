@@ -83,6 +83,33 @@ Le dossier `.claude/` contient les outils de l'assistant.
 
 ---
 
+## La date hégirienne
+
+Elle s'affiche à côté de la date du jour, en plus discret :
+
+> vendredi 14 août · 1 Rabi' al-Awwal 1448
+
+**C'est une estimation, et l'appli ne prétend rien d'autre.** Le vrai calendrier
+dépend de l'observation de la lune : la Mosquée de Paris peut annoncer un autre
+jour, parfois la veille pour le lendemain, et aucun site ne peut aller lire
+cette annonce automatiquement.
+
+Le calcul lui-même n'est pas unanime. Pour le 14 août 2026, les méthodes
+connues du navigateur répondent 29 Safar, 1er **ou** 2 Rabi' al-Awwal — trois
+jours d'écart. L'appli retient **Umm al-Qura**, la plus répandue.
+
+### S'aligner sur sa mosquée
+
+Dans **Réglages**, le bouton `−  0  +` décale la date d'un ou deux jours.
+Tu regardes une fois ce qu'annonce ta mosquée, tu ajustes, et c'est réglé.
+
+> **La règle qui ne doit jamais bouger :** cette date sert de repère, jamais
+> d'ordre. L'application ne dira jamais « jeûne aujourd'hui ». Se tromper d'un
+> jour ferait commettre une erreur dans une adoration — c'est autrement plus
+> grave qu'un défaut d'affichage. Un test automatique vérifie cette règle.
+
+---
+
 ## Sauvegarder ses données
 
 Tout ce que l'appli sait de toi vit dans **un seul navigateur, sur un seul

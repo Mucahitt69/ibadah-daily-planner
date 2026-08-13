@@ -173,6 +173,162 @@ groupe('La récurrence');
 /* ═══════════════════════════════════════════════════════════
    3. Le carnet — cocher, décocher, et demain
    ═══════════════════════════════════════════════════════════ */
+groupe('La date hégirienne');
+{
+  const { Store } = chargerStore({ jour: '2026-08-14' });
+
+  const h = Store.dateHegirienne('2026-08-14');
+  vrai('le navigateur sait la calculer', !!h);
+
+  if (h) {
+    // Repère fixe : si cette réponse change, c'est que la méthode de
+    // calcul a changé sous nos pieds, et il faut le savoir.
+    verifier('★ 14 août 2026 → 1 Rabi\' al-Awwal 1448', h.texte, '1 Rabi\' al-Awwal 1448');
+    verifier('le jour est un nombre', h.jour, 1);
+    verifier('le mois est un nombre', h.mois, 3);
+    verifier('l\'année est un nombre', h.annee, 1448);
+  }
+
+  // Le décalage doit vraiment décaler, y compris d'un mois à l'autre.
+  {
+    const S = chargerStore({ jour: '2026-08-14' }).Store;
+    verifier('sans réglage, aucun décalage', S.decalageHegire(), 0);
+
+    S.reglerOption('decalageHegire', -1);
+    verifier('★ « −1 jour » recule bien la date',
+      S.dateHegirienne('2026-08-14').texte, '30 Safar 1448');
+
+    S.reglerOption('decalageHegire', 1);
+    verifier('★ « +1 jour » avance bien la date',
+      S.dateHegirienne('2026-08-14').texte, '2 Rabi\' al-Awwal 1448');
+  }
+
+  // Un décalage aberrant ne doit pas pouvoir s'installer.
+  {
+    const S = chargerStore({ jour: '2026-08-14' }).Store;
+    S.reglerOption('decalageHegire', 40);
+    verifier('★ un décalage démesuré est ramené au maximum',
+      S.decalageHegire(), S.DECALAGE_MAX);
+    S.reglerOption('decalageHegire', -40);
+    verifier('dans l\'autre sens aussi', S.decalageHegire(), -S.DECALAGE_MAX);
+    S.reglerOption('decalageHegire', 'bonjour');
+    verifier('★ une valeur illisible vaut zéro', S.decalageHegire(), 0);
+    vrai('et la date reste calculable', !!S.dateHegirienne('2026-08-14'));
+  }
+
+  // Une sauvegarde écrite avant ce réglage doit recevoir sa valeur par défaut.
+  {
+    const S = chargerStore({ jour: '2026-08-14', sauvegarde: { 'ibadah-v3': {
+      version: 3, accueilli: true, taches: [], journal: {},
+      reglages: { notif: false, sombre: true, silenceNuit: true }   // pas de décalage
+    } } }).Store;
+    verifier('★ une ancienne sauvegarde reçoit le réglage manquant',
+      S.decalageHegire(), 0);
+    vrai('★ sans perdre ses réglages existants', S.reglages().sombre);
+  }
+
+  /* L'écran dit-il bien que c'est une estimation ? */
+  {
+    const html = lire('index.html');
+    const app  = lire('app.js');
+    const store = lire('store.js');
+
+    vrai('la date apparaît dans l\'en-tête',   /id="today-hijri"/.test(html));
+    vrai('le réglage existe',                  /id="hijri-minus"/.test(html));
+    vrai('★ l\'écran dit qu\'elle est calculée', /calculée/.test(html));
+    vrai('★ et invite à s\'aligner sur sa mosquée', /mosquée/.test(html));
+    vrai('les deux boutons sont branchés',
+      /#hijri-minus'\)\.addEventListener/.test(app) && /#hijri-plus'\)\.addEventListener/.test(app));
+
+    // Le garde-fou central : cette date ne doit jamais prescrire une adoration.
+    // On regarde le code seul — les commentaires, eux, ont le droit (et le
+    // devoir) de parler de ce piège pour qu'il ne soit pas oublié.
+    const sansCommentaires = txt => txt
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    faux('★ la date hégirienne ne dicte aucune adoration',
+      /(jeûne|jeune|jeûner)\s+aujourd/i.test(sansCommentaires(app) + sansCommentaires(store)));
+
+    vrai('la liste des mois est trouvée',
+      /const MOIS_HEGIRIENS = \[/.test(store));
+  }
+
+  // Les douze mois, un par un : aucun ne doit manquer à l'appel.
+  {
+    const S = chargerStore({ jour: '2026-08-14' }).Store;
+    const vus = new Set();
+    for (let i = 0; i < 400; i++) {
+      const d = S.dateHegirienne(S.cleDecalee('2026-01-01', i));
+      if (d) vus.add(d.mois);
+    }
+    verifier('★ une année entière donne bien douze mois nommés', vus.size, 12);
+    vrai('★ aucun mois ne s\'affiche « undefined »',
+      [...Array(400).keys()].every(i => {
+        const d = S.dateHegirienne(S.cleDecalee('2026-01-01', i));
+        return !d || !/undefined/.test(d.texte);
+      }));
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   2 ter. L'ordre des intentions
+   ═══════════════════════════════════════════════════════════ */
+groupe('L\'ordre des intentions');
+{
+  // Créées dans le désordre exprès : c'est le rythme qui doit décider,
+  // pas l'ordre dans lequel on les a écrites.
+  const { Store } = chargerStore({ jour: JOUR, sauvegarde: etatV3([
+    tache({ id: 1, nom: 'Mensuelle A',   frequence: 'monthly', creeeLe: '2026-08-12' }),
+    tache({ id: 2, nom: 'Quotidienne A', frequence: 'daily' }),
+    tache({ id: 3, nom: 'Une fois',      frequence: 'once' }),
+    tache({ id: 4, nom: 'Quotidienne B', frequence: 'daily' }),
+    tache({ id: 5, nom: 'Vendredi',      frequence: 'weekly', jourSemaine: 3 })
+  ]) });
+
+  const noms = Store.tachesDuJour(JOUR).map(t => t.nom);
+  verifier('★ les intentions sont rangées par rythme', noms, [
+    'Quotidienne A', 'Quotidienne B',   // chaque jour d'abord
+    'Vendredi',                         // puis chaque semaine
+    'Mensuelle A',                      // puis chaque mois
+    'Une fois'                          // et les ponctuelles en bas
+  ]);
+
+  verifier('★ à rythme égal, l\'ordre de création est gardé',
+    noms.indexOf('Quotidienne A') < noms.indexOf('Quotidienne B'), true);
+
+  // Le tri ne doit toucher qu'à l'affichage : la liste rangée sur
+  // l'appareil garde son ordre, sinon chaque ouverture la réécrirait.
+  verifier('★ la liste rangée sur l\'appareil n\'est pas réorganisée',
+    Store._etat().taches.map(t => t.id), [1, 2, 3, 4, 5]);
+
+  // Un rythme inconnu (fichier bricolé) ne doit pas faire disparaître
+  // l'intention : elle passe simplement en dernier.
+  const bizarre = chargerStore({ jour: JOUR, sauvegarde: etatV3([
+    tache({ id: 1, nom: 'Inconnue', frequence: 'lunaire' }),
+    tache({ id: 2, nom: 'Normale',  frequence: 'daily' })
+  ]) }).Store;
+  const n2 = bizarre.tachesDuJour(JOUR).map(t => t.nom);
+  vrai('★ un rythme inconnu ne fait pas disparaître l\'intention',
+    n2.indexOf('Inconnue') !== -1);
+  verifier('et il se range en dernier', n2[n2.length - 1], 'Inconnue');
+
+  /* L'écran regroupe-t-il vraiment ? */
+  const app = lire('app.js');
+  const css = lire('styles.css');
+  vrai('★ l\'écran écrit les intentions par groupes',
+    /remplirParGroupes\(listeAFaire/.test(app));
+  vrai('les faites sont groupées aussi',
+    /remplirParGroupes\(listeFaites/.test(app));
+  vrai('★ l\'intertitre n\'apparaît qu\'avec plusieurs rythmes',
+    /groupes\.length > 1/.test(app));
+  vrai('l\'intertitre a un style', /\.groupe-titre\s*\{/.test(css));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   3 bis. Le carnet du jour
+   ═══════════════════════════════════════════════════════════ */
 groupe('Le carnet du jour');
 {
   const { Store } = chargerStore({ jour: JOUR, sauvegarde: etatV3([tache({ id: 1 })]) });
@@ -385,8 +541,11 @@ groupe('Reprise des anciennes sauvegardes');
 
   verifier('la sauvegarde passe en version 3', Store._etat().version, 3);
   verifier('aucune intention perdue', Store._etat().taches.length, 3);
+  // Les réglages sauvegardés sont gardés, et ceux ajoutés depuis reçoivent
+  // leur valeur par défaut — sinon une vieille sauvegarde arriverait avec
+  // des réglages manquants, et l'application lirait « undefined ».
   verifier('les réglages sont gardés', Store.reglages(),
-    { notif: false, sombre: true, silenceNuit: false });
+    { notif: false, sombre: true, silenceNuit: false, decalageHegire: 0 });
   vrai('chaque intention reçoit une liste de dhikr vide',
     Store._etat().taches.every(t => Array.isArray(t.sousTaches)));
   vrai('chaque page du carnet reçoit son casier « sous »',

@@ -82,6 +82,36 @@ function afficherDate() {
   if (Store.jourSimule()) {
     $('#today-date').textContent += ' — jour simulé';
   }
+
+  // La date hégirienne se tait si le navigateur ne sait pas la calculer :
+  // mieux vaut ne rien afficher qu'afficher une date inventée.
+  const h = Store.dateHegirienne(JOUR);
+  $('#today-hijri').textContent = h ? h.texte : '';
+  $('#today-hijri').hidden      = !h;
+}
+
+/* ─── Réglage du décalage hégirien ──────────────────────────
+   Le calcul ne peut pas connaître l'annonce de la mosquée. Ce réglage
+   est la façon honnête de combler l'écart : la personne regarde une
+   fois ce qu'annonce sa mosquée, ajuste, et n'y revient plus. */
+function afficherReglageHegire() {
+  const d = Store.decalageHegire();
+  const h = Store.dateHegirienne(Store.aujourdhui());
+
+  $('#hijri-value').textContent = d > 0 ? `+${d}` : String(d);
+  $('#hijri-help').textContent  = h
+    ? `Aujourd'hui : ${h.texte}`
+    : 'Non disponible sur ce navigateur';
+
+  // On ne propose pas d'aller au-delà de ce qui a un sens.
+  $('#hijri-minus').disabled = d <= -Store.DECALAGE_MAX;
+  $('#hijri-plus').disabled  = d >=  Store.DECALAGE_MAX;
+}
+
+function reglerHegire(pas) {
+  Store.reglerOption('decalageHegire', Store.decalageHegire() + pas);
+  afficherReglageHegire();
+  afficherDate();          // l'en-tête suit tout de suite
 }
 
 function afficherPrieres() {
@@ -110,6 +140,38 @@ function afficherPrieres() {
     reste === 0 ? 'Toutes accomplies 🤍' : reste === 1 ? '1 restante' : reste + ' restantes';
 }
 
+/* Rassemble les intentions déjà triées en paquets de même rythme.
+   La liste arrive triée par Store.tachesDuJour : il suffit donc de
+   couper à chaque changement de rythme. */
+function grouperParRythme(taches) {
+  const groupes = [];
+  taches.forEach(t => {
+    const dernier = groupes[groupes.length - 1];
+    if (dernier && dernier.frequence === t.frequence) dernier.taches.push(t);
+    else groupes.push({ frequence: t.frequence, taches: [t] });
+  });
+  return groupes;
+}
+
+/* Écrit les intentions dans une liste, avec un intertitre par rythme.
+
+   L'intertitre ne s'affiche que s'il y a au moins deux rythmes : écrire
+   « CHAQUE JOUR » au-dessus d'une liste qui ne contient que des
+   quotidiennes n'apprendrait rien et alourdirait l'écran. */
+function remplirParGroupes(liste, taches, faites) {
+  const groupes = grouperParRythme(taches);
+
+  groupes.forEach(g => {
+    if (groupes.length > 1) {
+      const titre = document.createElement('p');
+      titre.className = 'groupe-titre';
+      titre.textContent = Store.FREQUENCE[g.frequence] || 'Autres';
+      liste.appendChild(titre);
+    }
+    g.taches.forEach(t => liste.appendChild(ligneTache(t, faites)));
+  });
+}
+
 function afficherTaches() {
   const listeAFaire  = $('#task-list');
   const listeFaites  = $('#done-list');
@@ -120,8 +182,8 @@ function afficherTaches() {
   const aFaire  = duJour.filter(t => !Store.estFaite(t, JOUR));
   const faites  = duJour.filter(t =>  Store.estFaite(t, JOUR));
 
-  aFaire.forEach(t => listeAFaire.appendChild(ligneTache(t, false)));
-  faites.forEach(t => listeFaites.appendChild(ligneTache(t, true)));
+  remplirParGroupes(listeAFaire, aFaire, false);
+  remplirParGroupes(listeFaites, faites, true);
 
   $('#tasks-empty').hidden      = aFaire.length > 0;
   $('#tasks-count').textContent = aFaire.length ? `${aFaire.length} à faire` : '';
@@ -1060,6 +1122,9 @@ $('#p-nom').addEventListener('input', () => {
 $('#theme-toggle').addEventListener('click', () => appliquerTheme(!Store.reglages().sombre));
 $('#set-dark').addEventListener('change', e => appliquerTheme(e.target.checked));
 
+$('#hijri-minus').addEventListener('click', () => reglerHegire(-1));
+$('#hijri-plus').addEventListener('click',  () => reglerHegire(+1));
+
 $('#set-quiet').addEventListener('change', e => {
   Store.reglerOption('silenceNuit', e.target.checked);
   planifierRappels();
@@ -1350,6 +1415,7 @@ function toutAfficher() {
   afficherTaches();
   afficherInfos();
   $('#set-quiet').checked = Store.reglages().silenceNuit;
+  afficherReglageHegire();
 }
 
 appliquerTheme(Store.reglages().sombre);

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ibadah">
-  <link rel="stylesheet" href="styles.css?v=f0ea54ea">
+  <link rel="stylesheet" href="styles.css?v=796ed483">
 </head>
 <body>
 
@@ -23,7 +23,10 @@
     <section class="screen is-active" id="screen-today" aria-labelledby="today-title">
       <header class="topbar">
         <div>
-          <p class="topbar__date" id="today-date">—</p>
+          <p class="topbar__date">
+            <span id="today-date">—</span><!--
+         --><span class="topbar__hijri" id="today-hijri" hidden></span>
+          </p>
           <h1 class="topbar__title" id="today-title">Assalamu alaykum</h1>
         </div>
         <button class="icon-btn" id="theme-toggle" aria-label="Changer le thème clair / sombre">
@@ -246,6 +249,27 @@
                    aria-labelledby="lbl-quiet" aria-describedby="quiet-help">
           </label>
         </div>
+
+        <div class="card list">
+          <div class="row">
+            <span>
+              <b id="lbl-hijri">Date hégirienne</b>
+              <small id="hijri-help">—</small>
+            </span>
+            <span class="stepper" role="group" aria-labelledby="lbl-hijri">
+              <button type="button" id="hijri-minus" aria-label="Reculer la date d'un jour">−</button>
+              <b id="hijri-value" aria-live="polite">0</b>
+              <button type="button" id="hijri-plus" aria-label="Avancer la date d'un jour">+</button>
+            </span>
+          </div>
+        </div>
+
+        <p class="note">
+          La date hégirienne est <b>calculée</b>, pas annoncée : le vrai calendrier
+          dépend de l'observation de la lune. Si ta mosquée annonce un autre jour,
+          ajuste ici — l'application ne te dira jamais quoi accomplir à partir
+          de cette date.
+        </p>
 
         <div class="card list">
           <button class="row row--action" id="btn-export" aria-label="Sauvegarder mes données dans un fichier">
@@ -520,10 +544,10 @@
 
   </div>
 
-  <script src="store.js?v=f0ea54ea"></script>
-  <script src="adhkar.js?v=f0ea54ea"></script>
-  <script src="feuille.js?v=f0ea54ea"></script>
-  <script src="app.js?v=f0ea54ea"></script>
-  <script src="rappels.js?v=f0ea54ea"></script>
+  <script src="store.js?v=796ed483"></script>
+  <script src="adhkar.js?v=796ed483"></script>
+  <script src="feuille.js?v=796ed483"></script>
+  <script src="app.js?v=796ed483"></script>
+  <script src="rappels.js?v=796ed483"></script>
 </body>
 </html>
