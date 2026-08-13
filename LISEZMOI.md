@@ -66,6 +66,9 @@ nouvelle version en ligne.
 | `index.html` | La structure de tous les écrans |
 | `styles.css` | Toutes les couleurs, tailles et animations |
 | `store.js` | **Le carnet** : les données, les dates, les récurrences, les calculs |
+| `adhkar.js` | La bibliothèque de dhikr d'origine |
+| `feuille.js` | Va chercher les dhikr ajoutés depuis ta feuille Google |
+| `modele-adhkar.csv` | Le modèle à importer dans Google Sheets |
 | `app.js` | L'affichage : dessine à l'écran ce que dit le carnet |
 | `rappels.js` | Les notifications |
 | `sw.js` | Le mode hors-ligne |
@@ -77,6 +80,69 @@ nouvelle version en ligne.
 Le dossier `docs/` est fabriqué automatiquement : ne le modifie jamais à la
 main, tes changements seraient écrasés. Modifie les fichiers de la racine.
 Le dossier `.claude/` contient les outils de l'assistant.
+
+---
+
+## Ajouter des dhikr sans toucher au code
+
+Tu peux ajouter des dhikr depuis une **feuille Google**, sans ouvrir un seul
+fichier de code. Tu écris une ligne, et le dhikr apparaît dans la
+bibliothèque de tout le monde.
+
+Personne d'autre ne peut écrire dans ta feuille : c'est ton compte Google
+qui garde la porte. L'application, elle, se contente de **lire**. C'est ça,
+le « mode admin » — il n'y a aucun mot de passe à retenir dans l'appli.
+
+### À faire une seule fois
+
+1. Va sur [sheets.google.com](https://sheets.google.com) → **Fichier → Importer**
+   → dépose `modele-adhkar.csv`. Les bonnes colonnes sont déjà en place.
+2. Menu **Fichier → Partager → Publier sur le Web**.
+3. Choisis **« Valeurs séparées par des virgules (.csv) »**, puis **Publier**.
+4. Copie le lien que Google affiche.
+5. Ouvre `feuille.js`, et colle ce lien entre les apostrophes de la
+   toute première ligne de réglage :
+
+   ```
+   const FEUILLE_URL = 'colle-le-lien-ici';
+   ```
+
+6. Publie l'application (`python publier.py`, puis `git add -A`,
+   `git commit`, `git push`).
+
+C'est fini. Tu n'auras plus jamais à refaire ces étapes.
+
+### Ensuite, au quotidien
+
+Tu ouvres ta feuille, tu ajoutes une ligne, et c'est tout.
+
+| Colonne | Ce qu'on y met |
+|---|---|
+| **Nom** | Le titre affiché. **Obligatoire** — une ligne sans nom est ignorée. |
+| **Categories** | Quand il apparaît, séparés par des virgules. Au choix : `matin`, `soir`, `apres-priere`, `avant-dormir`, `general`. Si tu laisses vide, il ira dans « À tout moment ». |
+| **Arabe** | Le texte en arabe |
+| **Phonetique** | La prononciation en lettres latines |
+| **Traduction** | Le sens en français |
+| **Source** | D'où vient le texte |
+| **Repetitions** | Combien de fois. Vide ou illisible = 1. |
+| **Verifie** | `oui` seulement si une personne de science a relu. Tout le reste, y compris vide, veut dire **non** — et l'avertissement reste affiché. |
+
+L'ordre des colonnes n'a aucune importance, et les accents ou majuscules
+dans les titres sont acceptés (`Répétitions` = `repetitions`).
+
+### Trois choses à savoir
+
+- **Ce n'est pas instantané.** Google garde une copie quelques minutes.
+  Ajoute ta ligne, patiente un peu, puis rouvre l'appli.
+- **Hors connexion, l'appli garde la dernière version reçue.** Tes ajouts
+  restent visibles dans le métro.
+- **Si la feuille est mal remplie, ou injoignable, l'appli continue de
+  marcher** avec les dhikr qu'elle avait déjà. Elle ne peut pas se vider
+  ni planter à cause de la feuille.
+
+> Le lien publié est lisible par toute personne qui l'a. Ce n'est pas
+> gênant — ces textes sont faits pour être vus dans l'appli. Ce qui compte,
+> c'est que personne ne puisse *modifier* : ça, seul ton compte Google le peut.
 
 ---
 

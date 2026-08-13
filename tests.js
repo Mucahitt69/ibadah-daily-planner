@@ -488,7 +488,146 @@ groupe('La bibliothèque de dhikr');
 
 
 /* ═══════════════════════════════════════════════════════════
-   8. Les pièges déjà payés cher — qu'ils ne reviennent jamais
+   8. Les dhikr ajoutés depuis la feuille Google
+   ═══════════════════════════════════════════════════════════ */
+groupe('La feuille Google');
+{
+  /* feuille.js est écrit pour un navigateur. On lui fournit ici les
+     deux choses dont il a besoin — un tableau ADHKAR et un
+     localStorage — pour pouvoir l'interroger sans rien ouvrir. */
+  function chargerFeuille(adhkar) {
+    const memoire = new Map();
+    const faux = {
+      getItem: c => (memoire.has(c) ? memoire.get(c) : null),
+      setItem: (c, v) => memoire.set(c, String(v))
+    };
+    return new Function('ADHKAR', 'localStorage', lire('feuille.js') +
+      '\n;return { feuilleLireCSV, feuilleVersDhikr, feuilleEstOui,' +
+      ' feuilleIdentifiant, feuillePoser, FEUILLE_URL };')(adhkar, faux);
+  }
+
+  let F = null;
+  try { F = chargerFeuille([]); }
+  catch (e) { echecs.push({ groupe: groupeCourant,
+    nom: '★ feuille.js est cassé', attendu: 'un fichier lisible', obtenu: e.message }); }
+
+  if (F) {
+    /* ─── Lire le tableau ─── */
+    const simple = F.feuilleLireCSV('a,b\n1,2');
+    verifier('deux lignes lues', simple.length, 2);
+    verifier('les cases sont séparées', simple[1], ['1', '2']);
+
+    // Le piège principal : une virgule À L'INTÉRIEUR d'une case.
+    const virgule = F.feuilleLireCSV('Nom,Traduction\nTasbih,"Gloire, à Allah"');
+    verifier('★ une virgule dans une case ne coupe pas la case',
+      virgule[1][1], 'Gloire, à Allah');
+
+    const guillemet = F.feuilleLireCSV('Nom\n"Il a dit ""oui"""');
+    verifier('un guillemet dans une case est rendu tel quel',
+      guillemet[1][0], 'Il a dit "oui"');
+
+    const saut = F.feuilleLireCSV('Nom,Traduction\nA,"deux\nlignes"');
+    verifier('un retour à la ligne dans une case ne coupe pas la ligne',
+      saut.length, 2);
+
+    /* ─── Transformer en dhikr ─── */
+    const csv = [
+      'Nom,Categories,Arabe,Phonetique,Traduction,Source,Repetitions,Verifie',
+      'Tasbih,"matin, soir",سبحان الله,Subhâna-Llâh,Gloire à Allah,Muslim,33,non',
+      'Tahmid,soir,الحمد لله,Al-hamdu li-Llâh,Louange à Allah,Muslim,10,oui'
+    ].join('\n');
+    const dhikrs = F.feuilleVersDhikr(F.feuilleLireCSV(csv));
+
+    verifier('deux dhikr fabriqués', dhikrs.length, 2);
+    verifier('les catégories deviennent une liste', dhikrs[0].categories, ['matin', 'soir']);
+    verifier('les répétitions sont un nombre', dhikrs[0].repetitions, 33);
+    verifier('« non » veut dire pas encore relu', dhikrs[0].verifie, false);
+    verifier('« oui » veut dire relu', dhikrs[1].verifie, true);
+    verifier('l\'arabe est conservé', dhikrs[1].arabe, 'الحمد لله');
+
+    // Un dhikr de la feuille ne doit jamais pouvoir écraser un dhikr d'origine.
+    vrai('★ les identifiants sont préfixés',
+      dhikrs.every(d => d.id.indexOf('feuille-') === 0));
+
+    /* ─── Ce qui doit résister aux erreurs de saisie ─── */
+    const bancal = F.feuilleVersDhikr(F.feuilleLireCSV([
+      'Nom,Categories,Repetitions,Verifie',
+      'Sans catégorie,,,',            // tout est vide
+      ',matin,5,oui',                 // pas de nom : ligne ignorée
+      'Catégorie inventée,lundi,,',   // moment qui n'existe pas
+      'Répétitions absurdes,matin,zéro,',
+      'Sans catégorie,,,'             // même nom que la première
+    ].join('\n')));
+
+    verifier('★ une ligne sans nom est ignorée', bancal.length, 4);
+    verifier('un dhikr sans catégorie reste visible', bancal[0].categories, ['general']);
+    verifier('une catégorie inventée est écartée', bancal[1].categories, ['general']);
+    verifier('des répétitions illisibles valent 1', bancal[2].repetitions, 1);
+    verifier('★ deux dhikr de même nom gardent des identifiants distincts',
+      bancal[0].id === bancal[3].id, false);
+    verifier('une case « Vérifié » vide laisse l\'avertissement',
+      bancal.every(d => d.verifie === false), true);
+
+    // Les titres de colonnes doivent être acceptés avec ou sans accent,
+    // en majuscules comme en minuscules, et dans n'importe quel ordre.
+    const melange = F.feuilleVersDhikr(F.feuilleLireCSV(
+      'VÉRIFIÉ,Nom,Répétitions,CATÉGORIES\noui,Istighfar,100,matin'));
+    verifier('★ l\'ordre des colonnes n\'a pas d\'importance', melange[0].nom, 'Istighfar');
+    verifier('les accents dans les titres sont tolérés', melange[0].repetitions, 100);
+    verifier('les majuscules dans les titres sont tolérées', melange[0].verifie, true);
+
+    /* ─── Poser les dhikr dans la bibliothèque ─── */
+    const biblio = [{ id: 'ayat-kursi', nom: 'Origine', verifie: true, categories: ['matin'] }];
+    const G = chargerFeuille(biblio);
+    G.feuillePoser(dhikrs);
+    verifier('les dhikr rejoignent la bibliothèque', biblio.length, 3);
+
+    // Rafraîchir deux fois ne doit pas empiler les mêmes dhikr en double.
+    G.feuillePoser(dhikrs);
+    verifier('★ un deuxième passage ne crée pas de doublons', biblio.length, 3);
+    verifier('le dhikr d\'origine est toujours là', biblio[0].nom, 'Origine');
+
+    // Une feuille vidée doit pouvoir retirer ce qu'elle avait ajouté.
+    G.feuillePoser([]);
+    verifier('une feuille vide retire ses dhikr', biblio.length, 1);
+  }
+
+  /* ─── Le fichier est-il vraiment branché ? ───
+     C'est le piège déjà payé une fois : un fichier parfait, des tests
+     verts, mais personne ne le charge — donc rien ne s'affiche. */
+  const html = lire('index.html');
+  const sw   = lire('sw.js');
+  const pub  = lire('publier.py');
+
+  vrai('★ index.html charge feuille.js',       /src="feuille\.js"/.test(html));
+  vrai('★ il est chargé après adhkar.js',
+    html.indexOf('adhkar.js') < html.indexOf('feuille.js'));
+  vrai('★ le mode hors-ligne garde feuille.js', /feuille\.js/.test(sw));
+  vrai('★ publier.py met feuille.js en ligne', /"feuille\.js"/.test(pub));
+  vrai('★ feuille.js reçoit un numéro de version',
+    /ESTAMPILLES = \[[^\]]*"feuille\.js"/.test(pub));
+
+  // Le lien de la feuille doit rester branché. S'il disparaît, l'application
+  // continue de marcher — mais plus aucun ajout n'arrive, et en silence.
+  if (F) {
+    vrai('★ le lien de la feuille est branché', F.FEUILLE_URL.length > 0);
+    vrai('★ c\'est bien un lien publié au format CSV',
+      /^https:\/\/docs\.google\.com\/spreadsheets\/.*output=csv/.test(F.FEUILLE_URL));
+  }
+
+  // Le modèle proposé doit correspondre aux colonnes que le code sait lire.
+  const modele = lire('modele-adhkar.csv');
+  if (F) {
+    const essai = F.feuilleVersDhikr(F.feuilleLireCSV(modele));
+    vrai('★ le modèle CSV est lisible par l\'application', essai.length === 2);
+    vrai('les exemples du modèle ne sont pas marqués comme relus',
+      essai.every(d => d.verifie === false));
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   9. Les pièges déjà payés cher — qu'ils ne reviennent jamais
    ═══════════════════════════════════════════════════════════ */
 groupe('Les pièges déjà rencontrés');
 {
