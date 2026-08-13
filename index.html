@@ -248,6 +248,35 @@
         </div>
 
         <div class="card list">
+          <button class="row row--action" id="btn-export" aria-label="Sauvegarder mes données dans un fichier">
+            <span><b>Sauvegarder mes données</b><small>Enregistre un fichier à garder en lieu sûr</small></span>
+            <span aria-hidden="true">↓</span>
+          </button>
+          <button class="row row--action" id="btn-import" aria-label="Restaurer une sauvegarde">
+            <span><b>Restaurer une sauvegarde</b><small>Remplace tout par le contenu d'un fichier</small></span>
+            <span aria-hidden="true">↑</span>
+          </button>
+          <!-- N'apparaît que si un carnet d'une version précédente dort
+               encore sur l'appareil. Sinon, ce serait un bouton qui ment. -->
+          <button class="row row--action" id="btn-recover" hidden
+                  aria-label="Récupérer un carnet d'une version précédente">
+            <span><b>Récupérer un ancien carnet</b><small id="recover-help">—</small></span>
+            <span aria-hidden="true">⟲</span>
+          </button>
+        </div>
+
+        <p class="note">
+          Tes données ne vivent que sur cet appareil. Changer de téléphone, vider
+          le navigateur ou désinstaller l'application les efface définitivement.
+          <b>Une sauvegarde de temps en temps est la seule protection.</b>
+        </p>
+
+        <!-- Le sélecteur de fichier reste invisible : c'est le bouton
+             ci-dessus qui l'ouvre, pour garder l'écran lisible. -->
+        <input type="file" id="import-file" accept="application/json,.json"
+               hidden aria-hidden="true" tabindex="-1">
+
+        <div class="card list">
           <button class="row row--action" id="btn-demo" aria-label="Charger des données d'exemple">
             <span><b>Charger des données d'exemple</b><small>12 jours d'historique pour voir les statistiques</small></span>
             <span aria-hidden="true">↺</span>

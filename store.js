@@ -740,6 +740,122 @@ const Store = (function () {
     sauver();
   }
 
+  /* ─── Rattraper un effacement accidentel ────────────────────
+     « Tout effacer » n'écrit que sous la clé de la version courante.
+     Le carnet d'une version précédente, lui, n'est jamais touché : il
+     dort sur l'appareil depuis la migration. C'est la seule planche de
+     salut quand quelqu'un a tout effacé sans avoir de sauvegarde.
+
+     Ça ne rattrape que les données antérieures à la version 3. Un
+     carnet créé entièrement sur la version actuelle, lui, est perdu —
+     d'où les deux boutons de sauvegarde plus haut. */
+
+  function ancienCarnet() {
+    for (const [cle, migrer] of [[CLE_V2, migrerV2], [CLE_V1, migrerV1]]) {
+      try {
+        const brut = localStorage.getItem(cle);
+        if (!brut) continue;
+        const r = resumeDe(migrer(JSON.parse(brut)));
+        // Un carnet vide ne vaut pas la peine d'être proposé.
+        if (r.intentions || r.joursNotes) return { cle: cle, resume: r };
+      } catch (e) { /* piste illisible : on essaie la suivante */ }
+    }
+    return null;
+  }
+
+  function restaurerAncienCarnet() {
+    const trouve = ancienCarnet();
+    if (!trouve) {
+      return { ok: false, raison: 'Aucun carnet d\'une version précédente sur cet appareil.' };
+    }
+    try {
+      const brut   = JSON.parse(localStorage.getItem(trouve.cle));
+      const sombre = etat.reglages.sombre;
+      etat = (trouve.cle === CLE_V2) ? migrerV2(brut) : migrerV1(brut);
+      etat.reglages.sombre = sombre;
+      sauver();
+      return { ok: true, resume: resumeDe(etat) };
+    } catch (e) {
+      return { ok: false, raison: 'Ce carnet n\'a pas pu être relu.' };
+    }
+  }
+
+  /* ─── 9. Sauvegarder et restaurer ───────────────────────────
+     Tout ce que l'application sait d'une personne vit dans UN seul
+     navigateur, sur UN seul appareil. Changer de téléphone, nettoyer
+     le navigateur ou désinstaller efface des mois d'histoire sans
+     rien demander. Ces deux fonctions sont la seule porte de sortie.
+
+     Elles servent aussi de pont : le jour où l'application devient
+     une vraie application, c'est ce fichier qui fera la traversée.
+     Sans lui, l'ancienne vie ne suivrait pas. */
+
+  /* Combien de choses y a-t-il là-dedans ? Sert à écrire des messages
+     qui parlent (« 12 intentions, 47 jours ») plutôt que « importé ». */
+  function resumeDe(e) {
+    return {
+      intentions: (e.taches || []).filter(t => t && t.active).length,
+      joursNotes: Object.keys(e.journal || {}).length
+    };
+  }
+
+  function exporter() {
+    return {
+      application: 'Ibadah Daily Planner',
+      format:      1,                       // format du FICHIER, pas des données
+      exporteLe:   new Date().toISOString(),
+      resume:      resumeDe(etat),          // lisible sans ouvrir l'application
+      donnees:     JSON.parse(JSON.stringify(etat))
+    };
+  }
+
+  /* Remplace tout ce qui est sur l'appareil par le contenu du fichier.
+
+     On ne fusionne pas, et c'est un choix : mélanger deux carnets ferait
+     entrer en collision des identifiants et des journées, et personne ne
+     saurait dire ce qui a gagné. Remplacer est brutal mais lisible — à
+     charge de l'application de prévenir clairement avant.
+
+     Ne lance jamais d'erreur : renvoie toujours un verdict, pour que
+     l'écran puisse dire ce qui ne va pas au lieu de rester muet. */
+  function importer(fichier, options) {
+    const refus = raison => ({ ok: false, raison: raison });
+
+    if (!fichier || typeof fichier !== 'object' || Array.isArray(fichier)) {
+      return refus("Ce fichier n'est pas une sauvegarde Ibadah.");
+    }
+
+    // On accepte le fichier complet comme le carnet seul : quelqu'un qui
+    // bricole son fichier à la main ne doit pas être puni pour ça.
+    const d = (fichier.donnees && typeof fichier.donnees === 'object')
+      ? fichier.donnees : fichier;
+
+    if (!Array.isArray(d.taches) || !d.journal || typeof d.journal !== 'object'
+        || Array.isArray(d.journal)) {
+      return refus("Ce fichier n'est pas une sauvegarde Ibadah.");
+    }
+
+    // Une sauvegarde écrite par une version future : on refuse plutôt que
+    // de deviner, sinon on risquerait d'écraser du bon avec du mal compris.
+    if (fichier.format && Number(fichier.format) > 1) {
+      return refus('Cette sauvegarde vient d\'une version plus récente de l\'application.');
+    }
+
+    // Avec « verifierSeulement », on regarde sans toucher : l'écran peut
+    // alors annoncer ce que contient le fichier AVANT de faire remplacer
+    // quoi que ce soit. Personne ne doit perdre son carnet par surprise.
+    if (options && options.verifierSeulement) {
+      return { ok: true, resume: resumeDe(d) };
+    }
+
+    const sombre = etat.reglages.sombre;   // le thème appartient à l'appareil
+    etat = normaliser(d);
+    etat.reglages.sombre = sombre;
+    sauver();
+
+    return { ok: true, resume: resumeDe(etat) };
+  }
+
   /* Jeu de démonstration : douze jours d'historique pour que la
      régularité et les badges aient quelque chose à montrer. */
   function chargerDemo() {
@@ -815,6 +931,8 @@ const Store = (function () {
     reglages, reglerOption,
     estAccueilli, marquerAccueilli,
     repartirDeZero, chargerDemo,
+    exporter, importer,
+    ancienCarnet, restaurerAncienCarnet,
     _etat: () => etat                                   // pour les tests
   };
 })();

@@ -629,6 +629,248 @@ groupe('La feuille Google');
 /* ═══════════════════════════════════════════════════════════
    9. Les pièges déjà payés cher — qu'ils ne reviennent jamais
    ═══════════════════════════════════════════════════════════ */
+groupe('Sauvegarder et restaurer');
+{
+  const taches  = [tache({ id: 1, nom: 'Coran' }), tache({ id: 2, nom: 'Adhkar du soir' })];
+  const journal = { '2026-08-10': { taches: [1], prieres: ['Fajr'], sous: [] },
+                    '2026-08-11': { taches: [1, 2], prieres: [], sous: [] } };
+
+  /* ─── Exporter ─── */
+  {
+    const { Store } = chargerStore({ sauvegarde: etatV3(taches, journal), jour: JOUR });
+    const f = Store.exporter();
+
+    verifier('le fichier s\'annonce', f.application, 'Ibadah Daily Planner');
+    verifier('deux intentions comptées', f.resume.intentions, 2);
+    verifier('deux jours comptés', f.resume.joursNotes, 2);
+    vrai('il porte une date d\'export', typeof f.exporteLe === 'string' && f.exporteLe.length > 0);
+    verifier('les intentions sont dedans', f.donnees.taches.length, 2);
+
+    // Le fichier ne doit pas être une fenêtre sur le carnet vivant :
+    // le modifier ne doit rien changer dans l'application.
+    f.donnees.taches[0].nom = 'MODIFIE';
+    verifier('★ le fichier est une copie, pas un raccourci',
+      Store.tache(1).nom, 'Coran');
+
+    // Il doit survivre au voyage par un fichier texte.
+    vrai('★ il se transforme en texte sans rien perdre',
+      JSON.parse(JSON.stringify(Store.exporter())).donnees.taches.length === 2);
+  }
+
+  /* ─── Aller-retour complet ─── */
+  {
+    const source = chargerStore({ sauvegarde: etatV3(taches, journal), jour: JOUR }).Store;
+    const fichier = JSON.parse(JSON.stringify(source.exporter()));
+
+    // Un autre appareil, vierge.
+    const { Store: cible, nav } = chargerStore({ jour: JOUR });
+    verifier('l\'appareil vierge est vide', cible.toutesLesTaches().length, 0);
+
+    const v = cible.importer(fichier);
+    vrai('l\'import est accepté', v.ok);
+    verifier('les intentions sont revenues', cible.toutesLesTaches().length, 2);
+    verifier('les noms sont intacts', cible.tache(2).nom, 'Adhkar du soir');
+    verifier('★ l\'historique est revenu aussi',
+      cible.estFaite(cible.tache(1), '2026-08-10'), true);
+    verifier('la prière notée est revenue', cible.priereFaite('Fajr', '2026-08-10'), true);
+    verifier('le résumé annonce ce qui est arrivé', v.resume,
+      { intentions: 2, joursNotes: 2 });
+
+    // Ça doit tenir après extinction du téléphone : sans ça, la
+    // restauration ne durerait que le temps d'un écran.
+    const ecrit = JSON.parse(nav.memoire.get('ibadah-v3'));
+    verifier('★ la restauration est écrite sur l\'appareil', ecrit.taches.length, 2);
+
+    // On rallume : un Store tout neuf, qui repart de ce qui a été écrit.
+    const rallume = chargerStore({ sauvegarde: { 'ibadah-v3': ecrit }, jour: JOUR }).Store;
+    verifier('★ elle est toujours là au redémarrage',
+      rallume.toutesLesTaches().length, 2);
+    verifier('avec son historique', rallume.estFaite(rallume.tache(1), '2026-08-10'), true);
+  }
+
+  /* ─── Regarder sans toucher ─── */
+  {
+    const { Store } = chargerStore({ sauvegarde: etatV3(taches, journal), jour: JOUR });
+    const autre = { application: 'Ibadah Daily Planner', format: 1,
+      donnees: { version: 3, accueilli: true, taches: [tache({ id: 9, nom: 'Autre' })],
+                 journal: {}, reglages: {} } };
+
+    const vu = Store.importer(autre, { verifierSeulement: true });
+    vrai('la vérification réussit', vu.ok);
+    verifier('elle annonce le contenu du fichier', vu.resume.intentions, 1);
+    verifier('★ mais elle n\'a rien remplacé', Store.toutesLesTaches().length, 2);
+    verifier('★ le carnet est intact', Store.tache(1).nom, 'Coran');
+  }
+
+  /* ─── Ce qui doit être refusé ─── */
+  {
+    const { Store } = chargerStore({ sauvegarde: etatV3(taches, journal), jour: JOUR });
+
+    const refuses = [
+      ['rien du tout',            null],
+      ['un texte',                'bonjour'],
+      ['un nombre',               42],
+      ['une liste',               [1, 2, 3]],
+      ['un objet sans rapport',   { bonjour: 'monde' }],
+      ['un carnet sans journal',  { taches: [] }],
+      ['un carnet sans taches',   { journal: {} }],
+      ['un journal qui est une liste', { taches: [], journal: [] }]
+    ];
+    refuses.forEach(([quoi, valeur]) => {
+      faux(`★ refuse ${quoi}`, Store.importer(valeur).ok === true);
+    });
+
+    // Le plus important : après tous ces refus, rien n'a bougé.
+    verifier('★ aucun refus n\'a abîmé le carnet', Store.toutesLesTaches().length, 2);
+
+    // Une sauvegarde venue d'une version future : on refuse plutôt que
+    // de deviner et d'écraser du bon avec du mal compris.
+    const futur = { format: 2, donnees: { taches: [], journal: {} } };
+    faux('★ refuse une sauvegarde trop récente', Store.importer(futur).ok);
+    vrai('et il le dit clairement', /récente/.test(Store.importer(futur).raison));
+  }
+
+  /* ─── Les petits pièges ─── */
+  {
+    const { Store } = chargerStore({ sauvegarde: etatV3(taches, journal), jour: JOUR });
+
+    // Quelqu'un qui bricole son fichier et enlève l'enveloppe.
+    const nu = { version: 3, accueilli: true, taches: [tache({ id: 5, nom: 'Nu' })],
+                 journal: {}, reglages: {} };
+    vrai('accepte un carnet sans enveloppe', Store.importer(nu).ok);
+    verifier('et le restaure vraiment', Store.tache(5).nom, 'Nu');
+  }
+  {
+    // Le thème appartient à l'appareil, pas à la sauvegarde : restaurer
+    // le carnet d'un téléphone en mode sombre ne doit pas basculer celui-ci.
+    const clair = chargerStore({ sauvegarde: {
+      'ibadah-v3': { version: 3, accueilli: true, taches: [], journal: {},
+                     reglages: { notif: false, sombre: false, silenceNuit: true } } } }).Store;
+    clair.importer({ donnees: { version: 3, accueilli: true, taches: [], journal: {},
+                                reglages: { sombre: true } } });
+    faux('★ restaurer ne change pas le thème de l\'appareil', clair.reglages().sombre);
+  }
+  {
+    // Une sauvegarde abîmée en route ne doit pas faire tomber l'application.
+    const { Store } = chargerStore({ sauvegarde: etatV3(taches, journal), jour: JOUR });
+    const casse = { donnees: { version: 3, taches: [null, tache({ id: 3, nom: 'Ok' })],
+                               journal: { '2026-08-10': { taches: 'pas une liste' } } } };
+    const v = Store.importer(casse);
+    vrai('★ un fichier à moitié abîmé passe quand même', v.ok);
+    verifier('les entrées vides sont écartées', Store.toutesLesTaches().length, 1);
+    verifier('la journée abîmée est remise d\'aplomb',
+      Store.estFaite(Store.tache(3), '2026-08-10'), false);
+  }
+
+  /* ─── Rattraper un effacement accidentel ─── */
+  {
+    const carnetV2 = { version: 2, accueilli: true,
+      taches: [tache({ id: 1, nom: 'Ancien Coran' }), tache({ id: 2, nom: 'Ancien dhikr' })],
+      journal: { '2026-08-01': { taches: [1], prieres: ['Fajr'], sous: [] } },
+      reglages: { notif: false, sombre: false, silenceNuit: true } };
+
+    // Rien à récupérer sur un appareil qui n'a jamais connu d'autre version.
+    {
+      const { Store } = chargerStore({ sauvegarde: etatV3(taches, journal), jour: JOUR });
+      verifier('aucun ancien carnet quand il n\'y en a pas', Store.ancienCarnet(), null);
+      faux('et la récupération le dit', Store.restaurerAncienCarnet().ok);
+    }
+
+    // LE scénario réel : quelqu'un efface tout par erreur, sans sauvegarde.
+    {
+      const { Store } = chargerStore({ jour: JOUR, sauvegarde: Object.assign(
+        { 'ibadah-v2': carnetV2 }, etatV3(taches, journal)) });
+
+      verifier('avant l\'accident', Store.toutesLesTaches().length, 2);
+      Store.repartirDeZero();
+      verifier('après l\'accident, plus rien', Store.toutesLesTaches().length, 0);
+
+      const trouve = Store.ancienCarnet();
+      vrai('★ l\'ancien carnet a survécu à l\'effacement', !!trouve);
+      verifier('et on sait ce qu\'il contient', trouve.resume,
+        { intentions: 2, joursNotes: 1 });
+
+      const v = Store.restaurerAncienCarnet();
+      vrai('★ la récupération réussit', v.ok);
+      verifier('★ les intentions sont revenues', Store.toutesLesTaches().length, 2);
+      verifier('avec leurs noms', Store.tache(1).nom, 'Ancien Coran');
+      verifier('★ et leur historique',
+        Store.estFaite(Store.tache(1), '2026-08-01'), true);
+    }
+
+    // Un carnet vide ne doit pas être proposé : ce serait un faux espoir.
+    {
+      const { Store } = chargerStore({ jour: JOUR, sauvegarde: {
+        'ibadah-v2': { version: 2, taches: [], journal: {}, reglages: {} } } });
+      verifier('★ un ancien carnet vide n\'est pas proposé', Store.ancienCarnet(), null);
+    }
+
+    // La toute première maquette (version 1) doit être rattrapée aussi.
+    {
+      const { Store } = chargerStore({ jour: JOUR, sauvegarde: { 'ibadah-demo': {
+        tasks: [{ id: 7, name: 'Maquette', freq: 'daily', time: '', done: true }],
+        prayers: { Fajr: true }, settings: {} } } });
+      const t = Store.ancienCarnet();
+      vrai('★ un carnet de la toute première version est retrouvé', !!t);
+      vrai('la récupération réussit aussi', Store.restaurerAncienCarnet().ok);
+      verifier('et rend l\'intention', Store.tache(7).nom, 'Maquette');
+    }
+
+    // Un ancien carnet illisible ne doit pas faire tomber l'application.
+    {
+      const { Store } = chargerStore({ jour: JOUR, sauvegarde: {
+        'ibadah-v2': 'ceci n\'est pas du JSON {{{' } });
+      verifier('★ un ancien carnet abîmé est ignoré sans casse',
+        Store.ancienCarnet(), null);
+      faux('et la récupération refuse proprement', Store.restaurerAncienCarnet().ok);
+    }
+
+    // Le thème reste celui de l'appareil, comme pour une restauration.
+    {
+      const { Store } = chargerStore({ jour: JOUR, sauvegarde: {
+        'ibadah-v2': Object.assign({}, carnetV2, { reglages: { sombre: true } }),
+        'ibadah-v3': { version: 3, accueilli: true, taches: [], journal: {},
+                       reglages: { notif: false, sombre: false, silenceNuit: true } } } });
+      Store.restaurerAncienCarnet();
+      faux('★ récupérer ne change pas le thème de l\'appareil', Store.reglages().sombre);
+    }
+  }
+
+  /* ─── Les boutons existent-ils vraiment ? ─── */
+  {
+    const html = lire('index.html');
+    const app  = lire('app.js');
+
+    vrai('★ le bouton « Sauvegarder » existe',  /id="btn-export"/.test(html));
+    vrai('★ le bouton « Restaurer » existe',    /id="btn-import"/.test(html));
+    vrai('le sélecteur de fichier existe',      /id="import-file"/.test(html));
+    vrai('★ « Sauvegarder » est branché',       /#btn-export'\)\.addEventListener/.test(app));
+    vrai('★ « Restaurer » est branché',         /#import-file'\)\.addEventListener/.test(app));
+    vrai('l\'écran prévient que tout est local', /efface définitivement/.test(html));
+
+    // Restaurer et tout effacer sont irréversibles : ils doivent demander.
+    const bloc = app.match(/#import-file'\)\.addEventListener[\s\S]*?\n\}\);/);
+    vrai('★ restaurer demande confirmation', !!bloc && /confirm\(/.test(bloc[0]));
+
+    const clear = app.match(/#btn-clear'\)\.addEventListener[\s\S]*?\n\}\);/);
+    vrai('★ tout effacer demande confirmation', !!clear && /confirm\(/.test(clear[0]));
+    vrai('et rappelle de sauvegarder d\'abord', !!clear && /sauvegarde/.test(clear[0]));
+
+    // Le bouton de récupération existe, part caché, et demande avant de remplacer.
+    vrai('le bouton « Récupérer » existe', /id="btn-recover"/.test(html));
+    vrai('★ il est caché par défaut',
+      /id="btn-recover"[\s\S]{0,120}?hidden/.test(html));
+    vrai('★ il n\'apparaît que si un carnet est trouvé',
+      /Store\.ancienCarnet\(\)[\s\S]{0,200}?#btn-recover'\)\.hidden = false/.test(app));
+    const rec = app.match(/#btn-recover'\)\.addEventListener[\s\S]*?\n\}\);/);
+    vrai('★ récupérer demande confirmation', !!rec && /confirm\(/.test(rec[0]));
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   10. Le hadith du jour
+   ═══════════════════════════════════════════════════════════ */
 groupe('Le hadith du jour');
 {
   const app = lire('app.js');

@@ -1065,6 +1065,122 @@ $('#set-quiet').addEventListener('change', e => {
   planifierRappels();
 });
 
+/* ─── Sauvegarder et restaurer ──────────────────────────────
+   Le seul moyen, pour l'instant, de ne pas perdre des mois
+   d'histoire en changeant de téléphone. */
+
+/* Un nom de fichier daté : plusieurs sauvegardes se rangent toutes
+   seules dans l'ordre, et on reconnaît la bonne sans l'ouvrir. */
+function nomDeSauvegarde() {
+  return `ibadah-sauvegarde-${Store.aujourdhui()}.json`;
+}
+
+function phraseResume(r) {
+  const i = `${r.intentions} intention${r.intentions > 1 ? 's' : ''}`;
+  const j = `${r.joursNotes} jour${r.joursNotes > 1 ? 's' : ''} d'historique`;
+  return `${i} et ${j}`;
+}
+
+$('#btn-export').addEventListener('click', () => {
+  try {
+    const fichier = Store.exporter();
+
+    // Indenté exprès : quelqu'un qui ouvre le fichier doit pouvoir y
+    // reconnaître ses propres intentions, pas un mur de caractères.
+    const texte = JSON.stringify(fichier, null, 2);
+    const url   = URL.createObjectURL(new Blob([texte], { type: 'application/json' }));
+
+    const lien = document.createElement('a');
+    lien.href = url;
+    lien.download = nomDeSauvegarde();
+    document.body.appendChild(lien);
+    lien.click();
+    lien.remove();
+
+    // Le navigateur a besoin d'un instant pour lancer le téléchargement
+    // avant qu'on libère l'adresse.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    toast(`Sauvegarde enregistrée — ${phraseResume(fichier.resume)} 🤍`);
+  } catch (e) {
+    toast('La sauvegarde n\'a pas pu être enregistrée.');
+  }
+});
+
+$('#btn-import').addEventListener('click', () => $('#import-file').click());
+
+$('#import-file').addEventListener('change', async e => {
+  const fichier = e.target.files && e.target.files[0];
+  // On vide tout de suite : sinon, rechoisir le même fichier ne
+  // déclencherait rien du tout, et on croirait l'application bloquée.
+  e.target.value = '';
+  if (!fichier) return;
+
+  let contenu;
+  try {
+    contenu = JSON.parse(await fichier.text());
+  } catch (err) {
+    alert('Ce fichier ne peut pas être lu. Choisis un fichier de sauvegarde Ibadah.');
+    return;
+  }
+
+  // On regarde d'abord, sans rien remplacer.
+  const apercu = Store.importer(contenu, { verifierSeulement: true });
+  if (!apercu.ok) { alert(apercu.raison); return; }
+
+  const actuel = Store.exporter().resume;
+  const ok = confirm(
+    `Cette sauvegarde contient ${phraseResume(apercu.resume)}.\n\n` +
+    `Elle va REMPLACER ce qui est sur cet appareil ` +
+    `(${phraseResume(actuel)}), sans possibilité de revenir en arrière.\n\n` +
+    `Continuer ?`);
+  if (!ok) return;
+
+  const verdict = Store.importer(contenu);
+  if (!verdict.ok) { alert(verdict.raison); return; }
+
+  appliquerTheme(Store.reglages().sombre);
+  depliees.clear();
+  toutAfficher();
+  planifierRappels();
+  aller('today');
+  toast(`Sauvegarde restaurée — ${phraseResume(verdict.resume)} 🤍`);
+});
+
+/* Un carnet d'une version précédente dort peut-être encore sur l'appareil :
+   « Tout effacer » ne l'a jamais touché. On ne propose le bouton que s'il
+   y a vraiment quelque chose à récupérer — un bouton qui ne trouve rien
+   vaudrait mieux ne pas exister. */
+(function proposerRecuperation() {
+  const trouve = Store.ancienCarnet();
+  if (!trouve) return;
+  $('#recover-help').textContent = `Retrouvé sur cet appareil : ${phraseResume(trouve.resume)}`;
+  $('#btn-recover').hidden = false;
+})();
+
+$('#btn-recover').addEventListener('click', () => {
+  const trouve = Store.ancienCarnet();
+  if (!trouve) { alert('Ce carnet n\'est plus disponible.'); return; }
+
+  const actuel = Store.exporter().resume;
+  const ok = confirm(
+    `Un carnet d'une version précédente a été retrouvé : ${phraseResume(trouve.resume)}.\n\n` +
+    `Le récupérer REMPLACERA ce qui est sur cet appareil ` +
+    `(${phraseResume(actuel)}).\n\n` +
+    `Continuer ?`);
+  if (!ok) return;
+
+  const verdict = Store.restaurerAncienCarnet();
+  if (!verdict.ok) { alert(verdict.raison); return; }
+
+  appliquerTheme(Store.reglages().sombre);
+  depliees.clear();
+  toutAfficher();
+  planifierRappels();
+  aller('today');
+  toast(`Ancien carnet récupéré — ${phraseResume(verdict.resume)} 🤍`);
+});
+
 $('#btn-demo').addEventListener('click', () => {
   Store.chargerDemo();
   appliquerTheme(Store.reglages().sombre);
@@ -1075,6 +1191,15 @@ $('#btn-demo').addEventListener('click', () => {
 });
 
 $('#btn-clear').addEventListener('click', () => {
+  // Un seul appui effaçait tout, sans rien demander — y compris par
+  // erreur, le bouton étant juste sous « Charger des données d'exemple ».
+  const r = Store.exporter().resume;
+  const ok = confirm(
+    `Tout effacer supprimera ${phraseResume(r)}, définitivement.\n\n` +
+    `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.\n\n` +
+    `Vraiment tout effacer ?`);
+  if (!ok) return;
+
   Store.repartirDeZero();
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();

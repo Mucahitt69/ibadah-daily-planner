@@ -83,6 +83,29 @@ Le dossier `.claude/` contient les outils de l'assistant.
 
 ---
 
+## Sauvegarder ses données
+
+Tout ce que l'appli sait de toi vit dans **un seul navigateur, sur un seul
+appareil**. Changer de téléphone, vider le navigateur ou désinstaller efface
+des mois d'historique, sans rien demander.
+
+Dans **Réglages** :
+
+| Bouton | Ce qu'il fait |
+|---|---|
+| **Sauvegarder mes données** | Enregistre un fichier `ibadah-sauvegarde-AAAA-MM-JJ.json`. Garde-le ailleurs que sur le téléphone (mail, cloud, ordinateur). |
+| **Restaurer une sauvegarde** | Remplace tout par le contenu d'un fichier. Demande confirmation, et annonce ce que contient le fichier avant de remplacer. |
+| **Récupérer un ancien carnet** | N'apparaît que si un carnet d'une version précédente dort encore sur l'appareil. |
+
+C'est aussi ce fichier qui fera le pont le jour où l'appli deviendra une vraie
+application : les deux ne partagent pas leur mémoire, et sans export l'ancienne
+vie ne suivrait pas.
+
+> **Prends une sauvegarde de temps en temps.** C'est aujourd'hui la seule
+> protection qui existe.
+
+---
+
 ## Ajouter des dhikr sans toucher au code
 
 Tu peux ajouter des dhikr depuis une **feuille Google**, sans ouvrir un seul

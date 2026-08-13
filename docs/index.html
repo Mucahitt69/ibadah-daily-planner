@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ibadah">
-  <link rel="stylesheet" href="styles.css?v=fb72ab1e">
+  <link rel="stylesheet" href="styles.css?v=f0ea54ea">
 </head>
 <body>
 
@@ -246,6 +246,35 @@
                    aria-labelledby="lbl-quiet" aria-describedby="quiet-help">
           </label>
         </div>
+
+        <div class="card list">
+          <button class="row row--action" id="btn-export" aria-label="Sauvegarder mes données dans un fichier">
+            <span><b>Sauvegarder mes données</b><small>Enregistre un fichier à garder en lieu sûr</small></span>
+            <span aria-hidden="true">↓</span>
+          </button>
+          <button class="row row--action" id="btn-import" aria-label="Restaurer une sauvegarde">
+            <span><b>Restaurer une sauvegarde</b><small>Remplace tout par le contenu d'un fichier</small></span>
+            <span aria-hidden="true">↑</span>
+          </button>
+          <!-- N'apparaît que si un carnet d'une version précédente dort
+               encore sur l'appareil. Sinon, ce serait un bouton qui ment. -->
+          <button class="row row--action" id="btn-recover" hidden
+                  aria-label="Récupérer un carnet d'une version précédente">
+            <span><b>Récupérer un ancien carnet</b><small id="recover-help">—</small></span>
+            <span aria-hidden="true">⟲</span>
+          </button>
+        </div>
+
+        <p class="note">
+          Tes données ne vivent que sur cet appareil. Changer de téléphone, vider
+          le navigateur ou désinstaller l'application les efface définitivement.
+          <b>Une sauvegarde de temps en temps est la seule protection.</b>
+        </p>
+
+        <!-- Le sélecteur de fichier reste invisible : c'est le bouton
+             ci-dessus qui l'ouvre, pour garder l'écran lisible. -->
+        <input type="file" id="import-file" accept="application/json,.json"
+               hidden aria-hidden="true" tabindex="-1">
 
         <div class="card list">
           <button class="row row--action" id="btn-demo" aria-label="Charger des données d'exemple">
@@ -491,10 +520,10 @@
 
   </div>
 
-  <script src="store.js?v=fb72ab1e"></script>
-  <script src="adhkar.js?v=fb72ab1e"></script>
-  <script src="feuille.js?v=fb72ab1e"></script>
-  <script src="app.js?v=fb72ab1e"></script>
-  <script src="rappels.js?v=fb72ab1e"></script>
+  <script src="store.js?v=f0ea54ea"></script>
+  <script src="adhkar.js?v=f0ea54ea"></script>
+  <script src="feuille.js?v=f0ea54ea"></script>
+  <script src="app.js?v=f0ea54ea"></script>
+  <script src="rappels.js?v=f0ea54ea"></script>
 </body>
 </html>
