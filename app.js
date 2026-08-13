@@ -515,13 +515,22 @@ const HADITH_SECOURS = [
     source: "Ibn 'Oumar" }
 ];
 
-/* Source en ligne : recueils traduits en français, servis par le CDN jsDelivr.
-   On tire dans deux recueils courts et très connus (les 40 de an-Nawawi et
-   les hadiths qudsi) : 82 textes, soit près de 3 mois sans répétition. */
+/* Source en ligne : recueil traduit en français, servi par le CDN jsDelivr.
+   42 textes, soit environ six semaines sans répétition.
+
+   ⚠️  UN SEUL RECUEIL, ET C'EST VOULU.
+
+   Les hadiths qudsi ont été retirés : ils n'ont pas été relus. Tant qu'un
+   recueil n'a pas été vérifié, il n'a rien à faire ici — même s'il allonge
+   le cycle avant répétition.
+
+   C'est aussi ce qui garde la même source en ligne et hors connexion : la
+   réserve de secours plus bas contient les mêmes 40 hadiths de an-Nawawi.
+   Ajouter un recueil ici sans l'ajouter là ferait réapparaître des textes
+   non relus dès que le téléphone retrouve du réseau. */
 const CDN = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
 const RECUEILS = [
-  { edition: 'fra-nawawi', nombre: 42, titre: 'Les 40 hadiths de an-Nawawi' },
-  { edition: 'fra-qudsi',  nombre: 40, titre: 'Hadith qudsi' }
+  { edition: 'fra-nawawi', nombre: 42, titre: 'Les 40 hadiths de an-Nawawi' }
 ];
 
 function numeroDuJour() {

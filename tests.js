@@ -629,6 +629,41 @@ groupe('La feuille Google');
 /* ═══════════════════════════════════════════════════════════
    9. Les pièges déjà payés cher — qu'ils ne reviennent jamais
    ═══════════════════════════════════════════════════════════ */
+groupe('Le hadith du jour');
+{
+  const app = lire('app.js');
+
+  /* Les hadiths qudsi ont été retirés parce qu'ils n'avaient pas été relus.
+     Le piège : l'appli a DEUX sources de hadiths — une en ligne et une
+     réserve hors connexion. Ne corriger que l'une des deux laisse les
+     textes non relus revenir dès que le téléphone retrouve du réseau. */
+  const bloc = app.match(/const RECUEILS = \[([\s\S]*?)\n\];/);
+  vrai('la liste des recueils en ligne est trouvée', !!bloc);
+
+  if (bloc) {
+    const editions = [...bloc[1].matchAll(/edition:\s*'([^']+)'/g)].map(m => m[1]);
+    verifier('★ un seul recueil en ligne', editions, ['fra-nawawi']);
+    faux('★ aucun hadith qudsi en ligne — ils ne sont pas relus',
+      editions.some(e => /qudsi/.test(e)));
+  }
+
+  faux('★ plus aucune mention de qudsi dans le code', /qudsi/i.test(
+    app.replace(/\/\*[\s\S]*?\*\//g, '')));   // hors commentaires explicatifs
+
+  // La réserve hors connexion doit couvrir les 40 hadiths de an-Nawawi,
+  // pour que l'appli montre la même chose avec ou sans réseau.
+  const secours = app.match(/const HADITH_SECOURS = \[([\s\S]*?)\n\];/);
+  vrai('la réserve hors connexion est trouvée', !!secours);
+  if (secours) {
+    const nb = (secours[1].match(/text:/g) || []).length;
+    vrai(`★ la réserve contient au moins 40 hadiths (elle en a ${nb})`, nb >= 40);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   10. Les pièges déjà payés cher — qu'ils ne reviennent jamais
+   ═══════════════════════════════════════════════════════════ */
 groupe('Les pièges déjà rencontrés');
 {
   const css  = lire('styles.css');
