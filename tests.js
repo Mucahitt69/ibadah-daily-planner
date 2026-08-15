@@ -1462,6 +1462,82 @@ groupe('Les trois filets');
 
 
 /* ═══════════════════════════════════════════════════════════
+   14. Ce qui casse au passage en application
+   ═══════════════════════════════════════════════════════════
+   Sept habitudes d'Android, invisibles sur un ordinateur, évidentes
+   au premier lancement sur un téléphone.
+   ═══════════════════════════════════════════════════════════ */
+groupe('Le passage en application');
+{
+  const app       = lire('app.js');
+  const css       = lire('styles.css');
+  const manifeste = lire('android/app/src/main/AndroidManifest.xml');
+  const d         = JSON.parse(lire('package.json')).dependencies || {};
+
+  /* ─── Le bouton Retour ─── */
+  vrai('le greffon de l\'application est installé', !!d['@capacitor/app']);
+  vrai('★ le bouton Retour est écouté', /addListener\('backButton'/.test(app));
+
+  // ★ Il doit fermer ce qui est ouvert, dans le MÊME ordre que la touche
+  //   Échap. Un ordre différent fermerait la mauvaise chose : on annule la
+  //   bibliothèque et c'est la feuille dessous qui se referme.
+  const retour = app.match(/function retourEnArriere[\s\S]*?\n\}/);
+  const echap  = app.match(/e\.key !== 'Escape'[\s\S]*?\n\}\);/);
+  const ordreDe = txt => (txt ? [...txt[0].matchAll(/fermer(\w+)\(\)/g)].map(m => m[1]) : []);
+  verifier('★ Retour ferme dans le même ordre que la touche Échap',
+    ordreDe(retour), ordreDe(echap));
+
+  vrai('★ Retour ne referme pas l\'écran de bienvenue par mégarde',
+    /#welcome'\)\.hidden\)\s*return true/.test(app));
+  vrai('à la racine, il ramène d\'abord à « Aujourd\'hui »',
+    /aller\('today'\); return true/.test(app));
+  vrai('★ et il faut DEUX appuis pour quitter', /exitApp\(\)/.test(app) &&
+    /Appuie encore pour quitter/.test(app));
+
+  /* ─── La barre d'état ─── */
+  vrai('le greffon de la barre d\'état est installé', !!d['@capacitor/status-bar']);
+
+  // ★ Android dessine la page SOUS l'horloge : sans réserve en haut, le
+  //   titre passe dessous. « env() » reste à 0 sur beaucoup de téléphones,
+  //   d'où la hauteur demandée au greffon.
+  vrai('★ l\'en-tête réserve la place de la barre d\'état',
+    /\.topbar\s*\{[\s\S]{0,200}?padding:\s*calc\(22px \+ var\(--haut-barre\)\)/.test(css));
+  vrai('la valeur de repli existe pour le site',
+    /--haut-barre:\s*env\(safe-area-inset-top/.test(css));
+  vrai('★ et la vraie hauteur est demandée au téléphone',
+    /getInfo\(\)[\s\S]{0,300}?--haut-barre/.test(app));
+  vrai('l\'écriture de la barre suit le thème',
+    /sombre \? 'DARK' : 'LIGHT'/.test(app));
+
+  /* ─── Le clavier ─── */
+  vrai('le greffon du clavier est installé', !!d['@capacitor/keyboard']);
+  vrai('★ la barre d\'onglets s\'efface quand le clavier monte',
+    /keyboardWillShow/.test(app) &&
+    /body\.clavier-ouvert \.tabbar\s*\{\s*display:\s*none/.test(css));
+
+  /* ─── L'orientation ─── */
+  // ★ Capacitor IGNORE l'orientation du manifest.webmanifest : elle ne
+  //   vaut que pour le site. Seul le manifeste Android décide.
+  vrai('★ l\'application est bloquée en portrait',
+    /android:screenOrientation="portrait"/.test(manifeste));
+
+  /* ─── Le jour qui change pendant la nuit ─── */
+  // ★ Laissée ouverte toute la nuit, l'appli affiche encore hier : les
+  //   intentions cochées la veille paraissent cochées aujourd'hui.
+  vrai('★ un changement de jour repart à neuf',
+    /Store\.aujourdhui\(\) === JOUR\) return;[\s\S]{0,80}?location\.reload\(\)/.test(app));
+
+  /* ─── Les alarmes après une mise à jour ─── */
+  // ★ Android efface les alarmes quand on remplace l'application. Le
+  //   greffon sait les remettre après un redémarrage, mais il n'écoute
+  //   pas la mise à jour : un testeur qui reçoit une correction n'aurait
+  //   plus aucun rappel jusqu'à sa prochaine ouverture.
+  vrai('★ les alarmes sont remises après une mise à jour',
+    /LocalNotificationRestoreReceiver[\s\S]{0,240}?MY_PACKAGE_REPLACED/.test(manifeste));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    Le verdict
    ═══════════════════════════════════════════════════════════ */
 

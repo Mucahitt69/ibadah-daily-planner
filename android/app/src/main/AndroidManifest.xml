@@ -9,12 +9,16 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Portrait, et uniquement portrait. Capacitor IGNORE le réglage
+             d'orientation du manifest.webmanifest : il ne vaut que pour le
+             site. Ici, c'est cette ligne qui décide. -->
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:exported="true">
 
             <intent-filter>
@@ -23,6 +27,19 @@
             </intent-filter>
 
         </activity>
+
+        <!-- ⚠️ Android EFFACE les alarmes d'une application quand on la
+             remplace par une nouvelle version. Le greffon des rappels sait
+             les remettre après un redémarrage, mais il n'écoute pas la mise
+             à jour : sans ces trois lignes, un testeur qui reçoit une
+             correction n'a PLUS AUCUN RAPPEL jusqu'à ce qu'il rouvre
+             l'application. On lui fait écouter la mise à jour aussi ;
+             son code se moque de savoir ce qui l'a réveillé. -->
+        <receiver android:name="com.capacitorjs.plugins.localnotifications.LocalNotificationRestoreReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

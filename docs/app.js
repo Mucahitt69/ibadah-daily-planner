@@ -39,6 +39,9 @@ function appliquerTheme(sombre) {
   $('#theme-icon').textContent = sombre ? '☀️' : '🌙';
   $('#set-dark').checked = sombre;
   Store.reglerOption('sombre', sombre);
+  // Dans l'application, l'heure et la batterie s'écrivent par-dessus
+  // notre fond : leur couleur doit suivre le thème.
+  if (typeof majStyleBarreDEtat === 'function') majStyleBarreDEtat();
 }
 
 /* ─── Navigation entre écrans ───────────────────────────── */
@@ -1509,6 +1512,103 @@ async function annoncerLeCheminUneFois(Fs, Rangement) {
   } catch (e) { /* tant pis pour l'annonce */ }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Ce qui change quand on devient une vraie application
+   ───────────────────────────────────────────────────────────
+   Rien de tout ceci ne se voit sur un ordinateur : ce sont les
+   habitudes d'Android, et elles sautent aux yeux dès le premier
+   lancement sur un téléphone.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Le bouton Retour d'Android ────────────────────────────
+   Sans rien faire, il QUITTE l'application — même avec une feuille
+   ouverte par-dessus. C'est toujours la première remarque des
+   testeurs : on ouvre « Ajouter une intention », on appuie sur
+   Retour pour l'annuler, et on se retrouve sur l'écran d'accueil
+   du téléphone.
+
+   On reprend exactement l'ordre déjà écrit pour la touche Échap,
+   et on ajoute ce qu'Android attend en plus. */
+function retourEnArriere() {
+  // L'écran de bienvenue ne se referme pas par un appui distrait.
+  if (!$('#welcome').hidden)     return true;
+
+  if (!$('#perso-sheet').hidden) { fermerPerso();   return true; }
+  if (!$('#lecture').hidden)     { fermerLecture(); return true; }
+  if (!$('#biblio').hidden)      { fermerBiblio();  return true; }
+  if (!$('#menu-sheet').hidden)  { fermerMenu();    return true; }
+  if (!$('#sheet').hidden)       { fermerFeuille(); return true; }
+
+  // Plus rien d'ouvert : Retour ramène à « Aujourd'hui ».
+  if (!$('#screen-today').classList.contains('is-active')) { aller('today'); return true; }
+
+  return false;                  // on est déjà à la racine
+}
+
+let sortieArmee = null;
+
+function brancherBoutonRetour() {
+  const Appli = greffonNatif('App');
+  if (!Appli) return;
+
+  Appli.addListener('backButton', () => {
+    if (retourEnArriere()) return;
+
+    // À la racine, un seul appui ne doit pas suffire : on quitte trop
+    // souvent par réflexe, et on perd sa place.
+    if (sortieArmee) { clearTimeout(sortieArmee); Appli.exitApp(); return; }
+    sortieArmee = setTimeout(() => { sortieArmee = null; }, 2000);
+    toast('Appuie encore pour quitter');
+  });
+}
+
+/* ─── La barre d'état ───────────────────────────────────────
+   Deux choses distinctes : la place qu'elle prend (réservée en CSS,
+   voir --haut-barre), et la couleur de son écriture. */
+function majStyleBarreDEtat() {
+  const Barre = greffonNatif('StatusBar');
+  if (!Barre) return;
+  // Fond clair → écriture sombre, et l'inverse. Sans ça, l'heure
+  // disparaît sur son propre fond.
+  Barre.setStyle({ style: Store.reglages().sombre ? 'DARK' : 'LIGHT' }).catch(() => {});
+}
+
+async function reserverLaPlaceDuHaut() {
+  const Barre = greffonNatif('StatusBar');
+  if (!Barre) return;
+  try {
+    const info = await Barre.getInfo();
+    // Le greffon rend déjà cette hauteur dans l'unité de la page :
+    // on la pose telle quelle. « env() » restait à 0 sur beaucoup
+    // de téléphones — c'est pour ça qu'on la demande.
+    if (info && info.height > 0) {
+      document.documentElement.style.setProperty('--haut-barre', info.height + 'px');
+    }
+  } catch (e) { /* on garde la valeur de repli du CSS */ }
+}
+
+/* ─── Le clavier ────────────────────────────────────────────
+   Sans ça, la barre d'onglets monte se poser sur le clavier. */
+function brancherClavier() {
+  const Clavier = greffonNatif('Keyboard');
+  if (!Clavier) return;
+  Clavier.addListener('keyboardWillShow', () => document.body.classList.add('clavier-ouvert'));
+  Clavier.addListener('keyboardWillHide', () => document.body.classList.remove('clavier-ouvert'));
+}
+
+/* ─── Le retour après une nuit ──────────────────────────────
+   L'application garde le jour trouvé à son ouverture (JOUR). Laissée
+   ouverte toute la nuit, elle affiche encore hier au réveil : les
+   intentions cochées la veille paraissent cochées aujourd'hui.
+   Repartir à neuf est la seule façon sûre — tout est déjà enregistré. */
+function surveillerLeChangementDeJour() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (Store.aujourdhui() === JOUR) return;
+    location.reload();
+  });
+}
+
 /* ─── Filet 3 : la sauvegarde de Google ─────────────────────
    Rien à écrire : « android:allowBackup="true" » est déjà dans le
    manifeste, et Android s'en occupe. On ne compte pas dessus seule —
@@ -1695,6 +1795,16 @@ if (!Store.estAccueilli()) $('#welcome').hidden = false;
   if (!estNatif()) return;
   await recupererDouble();
   await sauvegardeDuJour();
+})();
+
+/* ─── Et l'application prend les manières d'Android ───────── */
+(function seMettreAuFormatAppli() {
+  if (!estNatif()) return;
+  brancherBoutonRetour();
+  brancherClavier();
+  surveillerLeChangementDeJour();
+  reserverLaPlaceDuHaut();
+  majStyleBarreDEtat();
 })();
 
 /* Quand l'application passe en arrière-plan, on profite du moment pour

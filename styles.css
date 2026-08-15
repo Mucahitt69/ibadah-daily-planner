@@ -97,9 +97,20 @@ body {
 .scroll__pad { height: 96px; }
 
 /* ─── Barre du haut ──────────────────────────────────── */
+/* ─── La réserve du haut ────────────────────────────────────
+   Sur le site, l'en-tête commence sous la barre d'adresse : il n'y a
+   rien à réserver. Dans l'application, Android dessine la page SOUS
+   l'horloge et la batterie — sans cette réserve, le titre passerait
+   dessous, à moitié caché.
+
+   La valeur vient d'abord du téléphone lui-même (app.js va la
+   chercher et la pose ici) ; « env() » sert de solution de repli,
+   et 0 sur le site, où il n'y a rien au-dessus. */
+:root { --haut-barre: env(safe-area-inset-top, 0px); }
+
 .topbar {
   display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 12px; padding: 22px 18px 12px;
+  gap: 12px; padding: calc(22px + var(--haut-barre)) 18px 12px;
 }
 .topbar__date {
   margin: 0 0 2px; font-size: 13px; color: var(--muted);
@@ -317,6 +328,10 @@ body {
   background: var(--surface); border-top: 1px solid var(--line);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
 }
+/* Quand le clavier monte, la barre d'onglets saute au-dessus de lui et
+   se plante au milieu de l'écran. On la retire le temps de la frappe :
+   de toute façon, on ne change pas d'écran en train d'écrire. */
+body.clavier-ouvert .tabbar { display: none; }
 .tab {
   background: none; border: none; font: inherit; cursor: pointer;
   color: var(--muted); font-size: 11px; font-weight: 600;
@@ -733,7 +748,7 @@ body {
   position: absolute; inset: 0; z-index: 40;
   background: var(--bg);
   display: flex; flex-direction: column; justify-content: center;
-  padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+  padding: calc(28px + var(--haut-barre)) 24px calc(28px + env(safe-area-inset-bottom));
   overflow-y: auto;
   animation: fade .35s ease;
 }
