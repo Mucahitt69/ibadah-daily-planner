@@ -7,6 +7,11 @@
 # mais ça donnerait une image incomplète à quelqu'un qui tomberait dessus.
 HANDOFF.md
 
+# Le plan du passage en application Android (13 etapes), et le petit outil qui
+# interroge l'appli en marche. Meme raison : ce sont des notes de travail.
+PLAN-ANDROID.md
+inspecter-appli.js
+
 # Ancien dossier de publication et archives
 site/
 *.zip
