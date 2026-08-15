@@ -1376,6 +1376,10 @@ let inviteInstallation = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   inviteInstallation = e;
+  // Proposer d'installer une application déjà installée fait amateur.
+  // (En principe cet événement ne se déclenche pas dans l'application,
+  //  mais on ne compte pas là-dessus.)
+  if (estNatif()) return;
   if (localStorage.getItem('ibadah-install-masque') !== '1') {
     $('#install-bar').hidden = false;
   }
@@ -1400,7 +1404,27 @@ window.addEventListener('appinstalled', () => {
 });
 
 /* ─── Le gardien hors-ligne ─────────────────────────────── */
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+
+/* Sommes-nous dans la vraie application Android, ou sur le site web ?
+   Le test doit survivre au site web, où « Capacitor » n'existe pas du tout :
+   d'où les précautions avec typeof. */
+function estNatif() {
+  return typeof Capacitor !== 'undefined'
+      && typeof Capacitor.isNativePlatform === 'function'
+      && Capacitor.isNativePlatform();
+}
+
+if (estNatif()) {
+  // Dans l'application, les fichiers sont déjà dans le téléphone : le gardien
+  // ne sert à rien. Pire, il garderait une copie qui survivrait aux mises à
+  // jour de l'application — on installerait une correction et on continuerait
+  // de voir l'ancienne version. On renvoie donc ceux qui traînent.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then(liste => liste.forEach(r => r.unregister()))
+      .catch(() => {});
+  }
+} else if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {
       /* pas de mode hors-ligne : l'appli fonctionne quand même */

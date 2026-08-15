@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B6E55">
+  <title>Confidentialité — Ibadah Daily Planner</title>
+
+  <!-- Cette page est volontairement autonome : elle porte sa propre mise en
+       forme, sans dépendre de styles.css. Deux raisons. Elle doit rester
+       lisible même si le reste de l'application change, et Google exige
+       qu'elle soit consultable par n'importe qui, sans avoir rien installé. -->
+  <style>
+    :root {
+      --bg:      #F4F1EA;
+      --surface: #FFFFFF;
+      --line:    #E4DFD4;
+      --text:    #17211D;
+      --muted:   #5F6E66;
+      --primary: #0B6E55;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:      #0D1512;
+        --surface: #16201C;
+        --line:    #2A3831;
+        --text:    #E9EFEB;
+        --muted:   #96AAA0;
+        --primary: #3DBE92;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 18px 64px;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 620px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; line-height: 1.3; margin: 0 0 4px; }
+    h2 {
+      font-size: 1.05rem;
+      margin: 32px 0 8px;
+      color: var(--primary);
+    }
+    .date { color: var(--muted); font-size: .875rem; margin: 0 0 28px; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    .encadre {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 20px 0;
+    }
+    .encadre p:first-child { margin-top: 0; }
+    .encadre p:last-child  { margin-bottom: 0; }
+    a { color: var(--primary); }
+    footer {
+      margin-top: 40px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .875rem;
+    }
+  </style>
+</head>
+<body>
+<main>
+
+  <h1>Politique de confidentialité</h1>
+  <p class="date">Ibadah Daily Planner — mise à jour le 15 août 2026</p>
+
+  <div class="encadre">
+    <p><strong>En une phrase :</strong> Ibadah ne collecte rien, n'envoie rien,
+    et ne sait rien de toi. Tout ce que tu écris reste sur ton téléphone.</p>
+  </div>
+
+  <h2>Ce que l'application ne fait pas</h2>
+  <ul>
+    <li>Aucun compte, aucune inscription, aucun mot de passe.</li>
+    <li>Aucune publicité, aucun traceur, aucune mesure d'audience.</li>
+    <li>Aucun paiement, aucun achat.</li>
+    <li>Aucune donnée n'est envoyée à un serveur qui nous appartiendrait :
+        il n'existe aucun serveur de ce genre.</li>
+    <li>Ce que tu inscris n'est jamais partagé avec qui que ce soit.</li>
+  </ul>
+
+  <h2>Où vivent tes données</h2>
+  <p>Tes intentions, ton historique et tes réglages sont enregistrés
+  <strong>uniquement dans la mémoire de ton téléphone</strong>, dans l'espace
+  réservé à l'application. Personne d'autre n'y a accès, pas même nous.</p>
+  <p>Le bouton « Sauvegarder mes données » fabrique un fichier que
+  <strong>toi seul</strong> décides d'envoyer quelque part, ou pas.</p>
+
+  <h2>Les deux seules connexions à internet</h2>
+  <p>L'application se connecte à deux endroits, uniquement pour
+  <strong>lire</strong>, et jamais pour envoyer quoi que ce soit te concernant :</p>
+  <ul>
+    <li><strong>cdn.jsdelivr.net</strong> — pour aller chercher le hadith du jour.</li>
+    <li><strong>docs.google.com</strong> — pour lire la liste de dhikr publiée
+        par l'auteur de l'application.</li>
+  </ul>
+  <p>Comme pour n'importe quel site que tu visites, ces serveurs voient passer
+  ton adresse IP. Ils ne reçoivent rien d'autre : ni ton nom, ni tes intentions,
+  ni ton historique. Sans internet, l'application continue de fonctionner
+  normalement.</p>
+
+  <h2>Les notifications</h2>
+  <p>Si tu actives les rappels, l'application demande l'autorisation d'afficher
+  des notifications. Elle s'en sert <strong>uniquement</strong> pour les rappels
+  aux heures que tu as choisies toi-même. Rien n'est envoyé nulle part : les
+  rappels sont fabriqués par ton téléphone, pour ton téléphone.</p>
+
+  <h2>Effacer tes données</h2>
+  <ul>
+    <li>Dans l'application : Réglages → <strong>Tout effacer</strong>.</li>
+    <li>Ou simplement désinstaller l'application : tout part avec elle.</li>
+  </ul>
+  <p>Aucune demande à formuler, aucun délai : c'est immédiat et définitif.</p>
+
+  <h2>Les enfants</h2>
+  <p>L'application n'est pas destinée aux enfants de moins de 13 ans et ne leur
+  demande aucune information.</p>
+
+  <h2>Une chose importante, qui n'est pas une question de vie privée</h2>
+  <div class="encadre">
+    <p><strong>Les textes religieux de cette application n'ont pas encore été
+    relus par une personne de science.</strong> L'application est en essai
+    fermé, entre quelques personnes. Les textes concernés portent un
+    avertissement à l'écran. Vérifie-les auprès de quelqu'un de confiance avant
+    de t'y fier.</p>
+  </div>
+
+  <h2>Si cette page change</h2>
+  <p>Toute modification apparaîtra ici, avec une nouvelle date en haut de page.</p>
+
+  <h2>Nous écrire</h2>
+  <p>Une question, une correction à signaler :
+  <a href="mailto:busala.safa@gmail.com">busala.safa@gmail.com</a></p>
+
+  <footer>
+    <p><a href="./index.html">← Revenir à Ibadah</a></p>
+  </footer>
+
+</main>
+</body>
+</html>

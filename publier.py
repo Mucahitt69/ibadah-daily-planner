@@ -29,6 +29,10 @@ FICHIERS = [
     "rappels.js",
     "sw.js",
     "manifest.webmanifest",
+    # Exigée par le Play Store, et consultable par n'importe qui à l'adresse
+    # .../confidentialite.html. Elle n'est pas estampillée : la page principale
+    # ne la charge pas, elle porte sa propre mise en forme.
+    "confidentialite.html",
 ]
 
 DOSSIERS = ["icons"]

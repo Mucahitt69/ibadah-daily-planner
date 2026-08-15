@@ -1098,6 +1098,19 @@ groupe('Les pièges déjà rencontrés');
   vrai('★ index.html est cherché sur le réseau avant la réserve',
     /req\.mode === 'navigate'/.test(sw));
 
+  // La politique de confidentialité est exigée par le Play Store, et elle
+  // doit porter une vraie adresse de contact. Une page publiée avec un
+  // marqueur « à compléter » ferait refuser la fiche.
+  const conf = lire('confidentialite.html');
+  faux('★ la politique de confidentialité ne contient plus de marqueur à compléter',
+    /A-COMPLETER|example\.com/.test(conf));
+  vrai('★ la politique de confidentialité donne une adresse de contact',
+    /href="mailto:[^"@\s]+@[^"@\s]+\.[a-z]{2,}"/.test(conf));
+  vrai('★ elle est bien dans la liste de publication',
+    pub.includes('"confidentialite.html"'));
+  vrai('elle prévient que les textes ne sont pas relus',
+    /pas encore\s+été\s+relus/.test(conf));
+
   // Plus aucun point nulle part
   const store = lire('store.js');
   const app   = lire('app.js');
