@@ -327,6 +327,9 @@ function basculerSous(t, s, liSous, liParent) {
   const coche = Store.basculerSous(t, s.id, JOUR);
   const apres = Store.estFaite(t, JOUR);
 
+  // Le dernier dhikr coché termine l'intention : son rappel n'a plus lieu d'être.
+  if (apres !== avant) planifierRappels();
+
   if (apres && !avant) {
     depliees.delete(t.id);
     liParent.classList.add('is-done');
@@ -350,6 +353,10 @@ function basculerSous(t, s, liSous, liParent) {
 
 function basculer(t, li) {
   const cochee = Store.basculerTache(t, JOUR);
+
+  // Une intention cochée ce matin ne doit plus sonner cet après-midi —
+  // et si on la décoche, son rappel doit revenir.
+  planifierRappels();
 
   if (cochee) {
     // Petite animation : la tâche se coche, puis glisse vers « Terminées »
@@ -694,6 +701,7 @@ function ouvrirFeuille(t) {
   $('#sheet-submit').textContent = t ? 'Enregistrer' : 'Ajouter';
   $('#f-name').value = t ? t.nom : '';
   $('#f-time').value = t ? t.heure : '';
+  majNoteNuit();
   choisirJour(t ? Store.jourSemaineDe(t) : Store.dateDepuisCle(JOUR).getDay());
   choisirFrequence(t ? t.frequence : 'daily');
 
@@ -1026,6 +1034,28 @@ $('#task-form').addEventListener('submit', e => {
 $('#f-name').addEventListener('input', () => {
   $('#f-name').classList.remove('has-error');
   $('#f-name-err').hidden = true;
+});
+
+/* ─── L'heure de nuit ───────────────────────────────────────
+   Choisir 5 h 30 pour les adhkar du matin alors que « Silence la nuit »
+   est allumé donne un rappel muet. C'était invisible : on le dit au
+   moment du choix, avec le raccourci pour changer d'avis. */
+function majNoteNuit() {
+  const v = $('#f-time').value;
+  const h = v ? Number(v.split(':')[0]) : null;
+  const nuit = h !== null && isFinite(h) && (h >= 22 || h < 6);
+  $('#f-time-nuit').hidden = !(nuit && Store.reglages().silenceNuit);
+}
+
+$('#f-time').addEventListener('input',  majNoteNuit);
+$('#f-time').addEventListener('change', majNoteNuit);
+
+$('#f-time-nuit-off').addEventListener('click', () => {
+  Store.reglerOption('silenceNuit', false);
+  $('#set-quiet').checked = false;
+  majNoteNuit();
+  planifierRappels();
+  toast('Les rappels de la nuit sonneront');
 });
 
 $('#menu-edit').addEventListener('click', () => {

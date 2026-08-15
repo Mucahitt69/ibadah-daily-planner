@@ -662,6 +662,13 @@ body {
 .field input.has-error { border-color: #C0392B; }
 .field__error { display: block; font-size: 13px; color: #C0392B; margin-top: 7px; }
 
+/* Une remarque, pas une erreur : rien n'est cassé, on prévient simplement. */
+.field__note { display: block; font-size: 13px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+.lien {
+  font: inherit; font-size: 13px; padding: 0; border: none; background: none;
+  color: var(--primary); text-decoration: underline; cursor: pointer;
+}
+
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   font: inherit; font-size: 14px; cursor: pointer;

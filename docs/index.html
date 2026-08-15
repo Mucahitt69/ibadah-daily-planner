@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ibadah">
-  <link rel="stylesheet" href="styles.css?v=767ff276">
+  <link rel="stylesheet" href="styles.css?v=37e117f2">
 </head>
 <body>
 
@@ -243,11 +243,34 @@
           <label class="row row--switch">
             <span>
               <b id="lbl-quiet">Silence la nuit</b>
-              <small id="quiet-help">Aucun rappel entre 22h et 6h</small>
+              <small id="quiet-help">Les rappels de la nuit s'affichent sans son</small>
             </span>
             <input type="checkbox" id="set-quiet" class="switch" checked
                    aria-labelledby="lbl-quiet" aria-describedby="quiet-help">
           </label>
+        </div>
+
+        <!-- Les deux portes qu'Android garde fermées, même quand on a dit oui
+             aux notifications. rappels.js n'affiche cette carte que dans
+             l'application, et seulement s'il y a vraiment quelque chose à faire. -->
+        <div class="card list" id="portes" hidden>
+          <div class="row" id="porte-exacte" hidden>
+            <span>
+              <b>Sonner à l'heure exacte</b>
+              <small>Sans cette autorisation, Android a le droit de décaler
+                     un rappel de plusieurs minutes.</small>
+            </span>
+            <button type="button" class="btn btn--ghost" id="porte-exacte-btn">Autoriser</button>
+          </div>
+          <div class="row">
+            <span>
+              <b>Si un rappel n'arrive jamais</b>
+              <small>Ton téléphone met peut-être Ibadah en sommeil.
+                     Sur Samsung : Paramètres → Batterie → Limites d'utilisation
+                     en arrière-plan → retirer Ibadah, ou la passer en
+                     « Sans restriction ».</small>
+            </span>
+          </div>
         </div>
 
         <div class="card list">
@@ -380,6 +403,13 @@
         <label class="field">
           <span class="field__label">Un rappel ? <small>(facultatif)</small></span>
           <input type="time" id="f-time">
+          <!-- Prévenir AVANT, pas après : une heure de nuit avec « Silence la
+               nuit » allumé donne un rappel muet, et on ne le comprendrait
+               pas le lendemain matin. -->
+          <span class="field__note" id="f-time-nuit" hidden>
+            Entre 22h et 6h, ce rappel s'affichera <b>sans son</b>.
+            <button type="button" class="lien" id="f-time-nuit-off">Le laisser sonner</button>
+          </span>
         </label>
 
         <div class="sheet__actions">
@@ -544,10 +574,10 @@
 
   </div>
 
-  <script src="store.js?v=767ff276"></script>
-  <script src="adhkar.js?v=767ff276"></script>
-  <script src="feuille.js?v=767ff276"></script>
-  <script src="app.js?v=767ff276"></script>
-  <script src="rappels.js?v=767ff276"></script>
+  <script src="store.js?v=37e117f2"></script>
+  <script src="adhkar.js?v=37e117f2"></script>
+  <script src="feuille.js?v=37e117f2"></script>
+  <script src="app.js?v=37e117f2"></script>
+  <script src="rappels.js?v=37e117f2"></script>
 </body>
 </html>

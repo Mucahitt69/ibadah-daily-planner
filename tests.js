@@ -60,6 +60,32 @@ function chargerAdhkar() {
     '\n;return { ADHKAR, ADHKAR_CATEGORIES };')();
 }
 
+/* ─── Charger les rappels sans écran ────────────────────────
+   Pendant longtemps, ce fichier n'a pas lu une seule ligne de
+   rappels.js : les vérifications ne pouvaient RIEN dire des rappels,
+   et deux essais du matin ont échoué sans que rien ne passe au rouge.
+
+   On lui fabrique donc ici un monde vide : pas de page, pas de
+   Capacitor, pas de navigateur. Tout ce qui touche à l'écran se
+   débranche tout seul, et il reste les calculs — qui, eux, décident
+   de ce qui sonnera.
+
+   ⚠️ Cela ne prouve toujours pas qu'un téléphone sonne. Seule une
+   vraie alarme sur un vrai téléphone le prouve. */
+function chargerRappels(Store) {
+  const fabriquer = new Function(
+    'Store', 'toast', 'estNatif', 'Capacitor', 'document', 'window', 'navigator',
+    lire('rappels.js') + '\n;return Rappels;');
+  return fabriquer(Store, function () {}, function () { return false; });
+}
+
+/* Un rappel attendu mais absent doit faire passer la vérification au ROUGE,
+   pas faire exploser le fichier : une explosion emporterait avec elle toutes
+   les vérifications suivantes, et on ne verrait plus rien. */
+function rappel(liste, i) {
+  return liste[i] || { id: null, corps: '(aucun rappel)', nuit: null, quand: new Date(0) };
+}
+
 /* ─── Le carnet de notes des tests ──────────────────────── */
 
 let reussis = 0;
@@ -1156,6 +1182,11 @@ groupe('La chaîne de fabrication de l\'appli');
   vrai('il construit l\'apk avec gradlew.bat', /gradlew\.bat/.test(tel));
   vrai('puis il le pose sur le téléphone', /adb\s+install/.test(tel));
 
+  // Sans ce greffon, l'application retomberait sans bruit sur les minuteurs
+  // du site web — et plus rien ne sonnerait application fermée.
+  vrai('★ le greffon des vraies alarmes est bien installé',
+    !!(pkg.dependencies || {})['@capacitor/local-notifications']);
+
   // Capacitor ne doit lire que le dossier que publier.py fabrique.
   verifier('★ l\'appli est fabriquée à partir de docs/', cap.webDir, 'docs');
   verifier('le nom de code de l\'appli est inchangé', cap.appId, 'com.mucahid.ibadah');
@@ -1166,6 +1197,203 @@ groupe('La chaîne de fabrication de l\'appli');
     'androidScheme' in (cap.server || {}) || 'androidScheme' in (cap.android || {}));
   faux('★ aucun hostname dans capacitor.config.json',
     'hostname' in (cap.server || {}));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   12. Les rappels
+   ═══════════════════════════════════════════════════════════
+   Ce que ces vérifications peuvent dire : QUOI doit sonner, QUAND,
+   avec quel numéro, et avec ou sans bruit.
+   Ce qu'elles ne pourront jamais dire : si le téléphone sonne. Pour
+   ça, il n'existe qu'une preuve — un téléphone posé sur une table,
+   application fermée, qui sonne à 5 h 30 deux matins de suite.
+   ═══════════════════════════════════════════════════════════ */
+groupe('Les rappels : le numéro');
+{
+  const { Store } = chargerStore({ jour: JOUR });
+  const R = chargerRappels(Store);
+
+  // ★ Android n'accepte que des numéros tenant sur 32 bits, or nos
+  //   identifiants d'intentions font 13 chiffres. Les passer tels quels
+  //   ferait planter le greffon — ou pire, tronquerait le numéro en
+  //   silence et deux rappels s'écraseraient l'un l'autre.
+  const numeros = [];
+  for (let i = 0; i < 400; i++) {
+    numeros.push(R.numeroDeRappel(1755000000000 + i * 7919, '2026-08-12'));
+  }
+  const horsPlage = numeros.filter(n => !Number.isInteger(n) || n < 1 || n > 1073741824);
+  verifier('★ aucun numéro ne sort de la plage 1 … 2³⁰',
+    { combien: horsPlage.length, premier: horsPlage[0] === undefined ? null : horsPlage[0] },
+    { combien: 0, premier: null });
+  verifier('★ 400 numéros différents ne se marchent pas dessus',
+    new Set(numeros).size, 400);
+
+  // ★ Le même couple doit TOUJOURS donner le même numéro : sinon on ne
+  //   peut plus annuler un rappel déjà posé, et les fantômes s'accumulent.
+  verifier('★ le même couple donne toujours le même numéro',
+    R.numeroDeRappel(1755000000000, '2026-08-12'),
+    R.numeroDeRappel(1755000000000, '2026-08-12'));
+  vrai('deux jours différents donnent deux numéros différents',
+    R.numeroDeRappel(1755000000000, '2026-08-12') !==
+    R.numeroDeRappel(1755000000000, '2026-08-13'));
+  vrai('deux intentions différentes aussi',
+    R.numeroDeRappel(1755000000000, '2026-08-12') !==
+    R.numeroDeRappel(1755000000001, '2026-08-12'));
+}
+
+groupe('Les rappels : ce qui doit sonner');
+{
+  // 4 h du matin le jour simulé : le rappel de 5 h 30 est encore à venir.
+  const QUATRE_H = new Date(2026, 7, 12, 4, 0, 0);
+  const matin = () => chargerStore({
+    jour: JOUR,
+    sauvegarde: etatV3([tache({ id: 1, nom: 'Adhkar du matin', heure: '05:30' })])
+  }).Store;
+
+  {
+    const Store = matin();
+    const liste = chargerRappels(Store).listeDesRappels(QUATRE_H);
+    verifier('une intention quotidienne est posée 14 jours d\'avance', liste.length, 14);
+    verifier('chaque rappel porte un numéro unique',
+      new Set(liste.map(r => r.id)).size, 14);
+    verifier('le premier est celui d\'aujourd\'hui',
+      rappel(liste, 0).quand.getDate(), 12);
+    verifier('ils sont rangés du plus proche au plus lointain',
+      liste.map(r => r.quand.getTime()).slice().sort((a, b) => a - b),
+      liste.map(r => r.quand.getTime()));
+    verifier('le texte du rappel est le nom de l\'intention',
+      rappel(liste, 0).corps, 'Adhkar du matin');
+  }
+
+  // ★ LE bug qui a fait rater les deux essais du matin : « Silence la nuit »
+  //   est allumé d'origine, et l'ancien code JETAIT le rappel de 5 h 30
+  //   sans rien dire. Il doit maintenant être posé, simplement sans bruit.
+  {
+    const Store = matin();
+    vrai('« Silence la nuit » est bien allumé d\'origine', Store.reglages().silenceNuit);
+    const liste = chargerRappels(Store).listeDesRappels(QUATRE_H);
+    verifier('★ le rappel de 5 h 30 n\'est PLUS jeté', liste.length, 14);
+    vrai('★ il est simplement marqué « sans bruit »', rappel(liste, 0).nuit === true);
+  }
+
+  {
+    const Store = matin();
+    Store.reglerOption('silenceNuit', false);
+    const liste = chargerRappels(Store).listeDesRappels(QUATRE_H);
+    vrai('sans « Silence la nuit », le même rappel sonne', rappel(liste, 0).nuit === false);
+  }
+
+  {
+    const Store = chargerStore({
+      jour: JOUR,
+      sauvegarde: etatV3([tache({ id: 1, nom: 'Sunna du midi', heure: '14:00' })])
+    }).Store;
+    const liste = chargerRappels(Store).listeDesRappels(QUATRE_H);
+    vrai('un rappel de 14 h sonne, lui', rappel(liste, 0).nuit === false);
+  }
+
+  // La nuit va de 22 h à 6 h, bornes comprises du bon côté.
+  {
+    const R = chargerRappels(matin());
+    vrai('22 h est déjà la nuit',   R.heureDeNuit(22));
+    vrai('5 h est encore la nuit',  R.heureDeNuit(5));
+    faux('6 h ne l\'est plus',      R.heureDeNuit(6));
+    faux('21 h non plus',           R.heureDeNuit(21));
+  }
+
+  // ★ Recette d'acceptation n° 7 : une intention cochée le matin ne doit
+  //   pas déclencher son rappel de l'après-midi.
+  {
+    const Store = chargerStore({
+      jour: JOUR,
+      sauvegarde: etatV3(
+        [tache({ id: 1, nom: 'Adhkar du soir', heure: '18:00' })],
+        { [JOUR]: { taches: [1], prieres: [], sous: [] } })
+    }).Store;
+    const liste = chargerRappels(Store).listeDesRappels(QUATRE_H);
+    verifier('★ déjà accomplie : aucun rappel aujourd\'hui', liste.length, 13);
+    verifier('mais elle revient dès demain', rappel(liste, 0).quand.getDate(), 13);
+  }
+
+  {
+    const Store = matin();
+    const liste = chargerRappels(Store).listeDesRappels(new Date(2026, 7, 12, 9, 0, 0));
+    verifier('une heure déjà passée ne fabrique pas de rappel', liste.length, 13);
+  }
+
+  {
+    const Store = chargerStore({
+      jour: JOUR, sauvegarde: etatV3([tache({ id: 1, heure: '' })])
+    }).Store;
+    verifier('une intention sans heure ne fabrique aucun rappel',
+      chargerRappels(Store).listeDesRappels(QUATRE_H).length, 0);
+  }
+
+  // ★ « Une seule fois » reste affichée tant qu'elle n'est pas faite : la
+  //   rappeler 14 matins de suite serait du harcèlement.
+  {
+    const Store = chargerStore({
+      jour: JOUR,
+      sauvegarde: etatV3([tache({ id: 1, frequence: 'once', heure: '10:00' })])
+    }).Store;
+    verifier('★ « une seule fois » ne se rappelle qu\'aujourd\'hui',
+      chargerRappels(Store).listeDesRappels(QUATRE_H).length, 1);
+  }
+
+  {
+    const Store = chargerStore({
+      jour: JOUR,
+      sauvegarde: etatV3([tache({ id: 1, frequence: 'weekly', jourSemaine: 3, heure: '10:00' })])
+    }).Store;
+    verifier('une intention hebdomadaire donne 2 rappels en 14 jours',
+      chargerRappels(Store).listeDesRappels(QUATRE_H).length, 2);
+  }
+
+  {
+    const Store = chargerStore({ jour: JOUR, sauvegarde: etatV3([]) }).Store;
+    verifier('un carnet vide ne fabrique aucun rappel',
+      chargerRappels(Store).listeDesRappels(QUATRE_H).length, 0);
+  }
+}
+
+groupe('Les rappels : les promesses tenues');
+{
+  const html = lire('index.html');
+  const rap  = lire('rappels.js');
+  const manifeste = lire('android/app/src/main/AndroidManifest.xml');
+
+  // ★ Le texte des Réglages promettait « aucun rappel entre 22h et 6h ».
+  //   C'est justement ce qu'on ne fait plus : il s'affiche, sans son.
+  faux('★ les Réglages ne promettent plus « aucun rappel » la nuit',
+    /id="quiet-help">\s*Aucun rappel/.test(html));
+  vrai('ils annoncent un rappel sans son',
+    /id="quiet-help">[^<]*sans son/.test(html));
+  vrai('la feuille prévient avant de choisir une heure de nuit',
+    /id="f-time-nuit"/.test(html));
+
+  // ★ Google réserve USE_EXACT_ALARM aux réveils et aux agendas : la
+  //   demander est un motif de refus au Play Store. On utilise
+  //   SCHEDULE_EXACT_ALARM, que le greffon déclare tout seul.
+  faux('★ USE_EXACT_ALARM n\'est demandée nulle part',
+    /USE_EXACT_ALARM/.test(manifeste) || /USE_EXACT_ALARM/.test(rap));
+
+  // Deux canaux Android, parce qu'un canal ne se modifie plus une fois créé.
+  vrai('il y a bien un canal de jour et un canal de nuit',
+    /CANAL_JOUR\s*=\s*'[^']+'/.test(rap) && /CANAL_NUIT\s*=\s*'[^']+'/.test(rap));
+
+  // ★ Sans allowWhileIdle, Android garde le rappel pour plus tard quand le
+  //   téléphone dort — c'est-à-dire exactement à 5 h 30 du matin.
+  vrai('★ les alarmes réveillent le téléphone en veille profonde',
+    /allowWhileIdle:\s*true/.test(rap));
+
+  // ★ Une alarme « qui se répète » sonnerait aussi les jours déjà cochés,
+  //   sans qu'on puisse annuler une seule occurrence.
+  faux('★ aucune alarme répétitive : on repose la liste entière',
+    /repeats:\s*true|every:\s*'/.test(rap));
+
+  vrai('les rappels restent dans rappels.js, sans nouveau fichier',
+    [...html.matchAll(/<script src="([^"?]+)"/g)].map(m => m[1]).length === 5);
 }
 
 
