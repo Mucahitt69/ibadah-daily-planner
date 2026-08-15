@@ -1,0 +1,30 @@
+{
+  "name": "routine",
+  "version": "1.0.0",
+  "description": "",
+  "main": "adhkar.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mucahitt69/ibadah-daily-planner.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Mucahitt69/ibadah-daily-planner/issues"
+  },
+  "homepage": "https://github.com/Mucahitt69/ibadah-daily-planner#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/local-notifications": "^8.3.0"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "appId": "com.mucahid.ibadah",
+  "appName": "Ibadah",
+  "webDir": "docs",
+  "android": {
+    "backgroundColor": "#F4F1EA"
+  }
+}

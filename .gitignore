@@ -11,6 +11,23 @@ HANDOFF.md
 site/
 *.zip
 
+# L'application Android (Capacitor).
+# Le dossier android/ lui-meme EST versionne : il contiendra les icones et les
+# reglages faits a la main. Seuls les dossiers refabriques a chaque
+# construction sont exclus.
+node_modules/
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+
+# Le trousseau de signature : le perdre = ne plus jamais pouvoir mettre a jour
+# l'application. Il ne doit JAMAIS partir sur GitHub.
+*.jks
+*.keystore
+keystore.properties
+
 # Fichiers temporaires
 __pycache__/
 *.pyc

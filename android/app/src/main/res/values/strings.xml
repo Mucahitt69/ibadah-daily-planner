@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ibadah</string>
+    <string name="title_activity_main">Ibadah</string>
+    <string name="package_name">com.mucahid.ibadah</string>
+    <string name="custom_url_scheme">com.mucahid.ibadah</string>
+</resources>
