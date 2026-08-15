@@ -1398,6 +1398,70 @@ groupe('Les rappels : les promesses tenues');
 
 
 /* ═══════════════════════════════════════════════════════════
+   13. Les trois filets — ne plus jamais rien perdre
+   ═══════════════════════════════════════════════════════════
+   Le carnet doit tomber à travers TROIS filets pour disparaître.
+   Ces vérifications regardent que les trois sont bien tendus, et
+   surtout qu'aucun ne se retourne contre son propriétaire.
+   ═══════════════════════════════════════════════════════════ */
+groupe('Les trois filets');
+{
+  const app   = lire('app.js');
+  const store = lire('store.js');
+  const d     = JSON.parse(lire('package.json')).dependencies || {};
+
+  /* ─── Filet 1 : le double ─── */
+  vrai('le rangement hors du navigateur est installé', !!d['@capacitor/preferences']);
+  vrai('le double y est bien écrit',
+    /Preferences[\s\S]{0,600}?CLE_DOUBLE/.test(app));
+  vrai('★ un carnet vide alors qu\'un double existe est récupéré tout seul',
+    /function recupererDouble[\s\S]*?Store\.importer\(contenu\)/.test(app));
+
+  // ★ Le retournement à ne jamais laisser passer : on dit oui à « tout
+  //   effacer », et le carnet revient tout seul à la réouverture.
+  const efface = app.match(/#btn-clear'\)\.addEventListener[\s\S]*?\n\}\);/);
+  vrai('★ « tout effacer » emporte AUSSI le double',
+    !!efface && /remove\(\{\s*key:\s*CLE_DOUBLE/.test(efface[0]));
+
+  // Quand Android ferme l'appli sans prévenir, le délai d'attente ne
+  // serait jamais atteint : le départ doit écrire tout de suite.
+  vrai('★ le double est écrit sans délai quand l\'appli s\'en va',
+    /document\.hidden\)\s*sauverDouble\(true\)/.test(app));
+
+  /* ─── Filet 2 : une sauvegarde par jour, en fichier ─── */
+  vrai('les greffons fichier et partage sont installés',
+    !!d['@capacitor/filesystem'] && !!d['@capacitor/share']);
+  vrai('★ la copie du jour va dans Documents — elle survit à la désinstallation',
+    /directory:\s*'DOCUMENTS'/.test(app));
+  verifier('on garde une semaine de copies',
+    (app.match(/COPIES_GARDEES\s*=\s*(\d+)/) || [])[1], '7');
+
+  // ★ L'ordre compte : récupérer d'abord, écrire ensuite. À l'envers, on
+  //   écraserait la bonne copie du jour par un carnet encore vide.
+  vrai('★ on récupère AVANT d\'écrire la copie du jour',
+    app.indexOf('await recupererDouble()') > -1 &&
+    app.indexOf('await recupererDouble()') < app.indexOf('await sauvegardeDuJour()'));
+
+  /* ─── Le bouton qui ne faisait rien ─── */
+  // ★ Dans l'application, un lien « download » n'ouvre aucun gestionnaire
+  //   de téléchargement : le bouton restait muet, et on croyait avoir
+  //   une sauvegarde alors qu'on n'avait rien.
+  vrai('★ « Sauvegarder » ne compte plus sur le seul lien de téléchargement',
+    /greffonNatif\('Share'\)[\s\S]{0,120}?sauvegarderDansLAppli/.test(app));
+  vrai('et le site garde son téléchargement, qui marche',
+    /lien\.download = nomDeSauvegarde/.test(app));
+
+  /* ─── store.js doit rester lisible sans navigateur ───
+     ★ Une seule mention non protégée de window ou Capacitor dans
+     store.js, et toutes les vérifications ci-dessus s'effondrent d'un
+     coup : elles le chargent dans une boîte où rien de tout cela
+     n'existe. C'est pour ça que ce code vit dans app.js. */
+  faux('★ store.js ne mentionne ni window, ni Capacitor, ni document',
+    /\bwindow\b|Capacitor|\bdocument\b/.test(store));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    Le verdict
    ═══════════════════════════════════════════════════════════ */
 

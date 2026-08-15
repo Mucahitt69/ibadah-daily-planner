@@ -131,6 +131,9 @@ function afficherPrieres() {
       if (cochee) toast(`${nom} accomplie — qu'Allah l'accepte 🤍`);
       afficherPrieres();
       afficherEnTete();
+      // Une prière cochée ne change aucun rappel, mais elle change le
+      // carnet : le double doit suivre.
+      sauverDouble();
     });
     boite.appendChild(b);
   });
@@ -328,7 +331,7 @@ function basculerSous(t, s, liSous, liParent) {
   const apres = Store.estFaite(t, JOUR);
 
   // Le dernier dhikr coché termine l'intention : son rappel n'a plus lieu d'être.
-  if (apres !== avant) planifierRappels();
+  if (apres !== avant) carnetAChange();
 
   if (apres && !avant) {
     depliees.delete(t.id);
@@ -356,7 +359,7 @@ function basculer(t, li) {
 
   // Une intention cochée ce matin ne doit plus sonner cet après-midi —
   // et si on la décoche, son rappel doit revenir.
-  planifierRappels();
+  carnetAChange();
 
   if (cochee) {
     // Petite animation : la tâche se coche, puis glisse vers « Terminées »
@@ -1028,7 +1031,7 @@ $('#task-form').addEventListener('submit', e => {
     afficherTaches();
     toast('Intention ajoutée — qu\'Allah te facilite 🤍');
   }
-  planifierRappels();
+  carnetAChange();
 });
 
 $('#f-name').addEventListener('input', () => {
@@ -1054,7 +1057,7 @@ $('#f-time-nuit-off').addEventListener('click', () => {
   Store.reglerOption('silenceNuit', false);
   $('#set-quiet').checked = false;
   majNoteNuit();
-  planifierRappels();
+  carnetAChange();
   toast('Les rappels de la nuit sonneront');
 });
 
@@ -1085,7 +1088,7 @@ $('#confirm-yes').addEventListener('click', () => {
   fermerMenu();
   afficherTaches();
   toast('Intention retirée. Ce qui est accompli reste inscrit.');
-  planifierRappels();
+  carnetAChange();
 });
 
 /* La bibliothèque */
@@ -1095,7 +1098,7 @@ $('#biblio-save').addEventListener('click', () => {
   if (Store.sousTachesDe(t).length) depliees.add(t.id); else depliees.delete(t.id);
   fermerBiblio();
   afficherTaches();
-  planifierRappels();
+  carnetAChange();
   toast('Ta liste de dhikr est à jour 🤍');
 });
 
@@ -1157,7 +1160,7 @@ $('#hijri-plus').addEventListener('click',  () => reglerHegire(+1));
 
 $('#set-quiet').addEventListener('change', e => {
   Store.reglerOption('silenceNuit', e.target.checked);
-  planifierRappels();
+  carnetAChange();
 });
 
 /* ─── Sauvegarder et restaurer ──────────────────────────────
@@ -1176,29 +1179,64 @@ function phraseResume(r) {
   return `${i} et ${j}`;
 }
 
-$('#btn-export').addEventListener('click', () => {
+/* Le texte du fichier, mis en forme. Indenté exprès : quelqu'un qui
+   l'ouvre doit pouvoir y reconnaître ses propres intentions, pas un
+   mur de caractères. */
+function texteDeSauvegarde() {
+  return JSON.stringify(Store.exporter(), null, 2);
+}
+
+/* ⚠️ Dans l'application, ce bouton NE FAISAIT RIEN, en silence.
+   Un lien « download » a besoin du gestionnaire de téléchargement du
+   navigateur — une application n'en a pas. On écrit donc le fichier
+   nous-mêmes, puis on laisse choisir où l'envoyer : Drive, Fichiers,
+   un message à soi-même… C'est plus pratique qu'avant. */
+async function sauvegarderDansLAppli() {
+  const Fs    = greffonNatif('Filesystem');
+  const Envoi = greffonNatif('Share');
+  const nom   = nomDeSauvegarde();
+
+  await Fs.writeFile({
+    path: nom, data: texteDeSauvegarde(),
+    directory: 'CACHE', encoding: 'utf8'
+  });
+  const { uri } = await Fs.getUri({ path: nom, directory: 'CACHE' });
+
+  await Envoi.share({
+    title: 'Sauvegarde Ibadah',
+    dialogTitle: 'Où ranger ta sauvegarde ?',
+    files: [uri]
+  });
+}
+
+/* Sur le site, le téléchargement classique : lui, il marche. */
+function sauvegarderSurLeSite() {
+  const url = URL.createObjectURL(
+    new Blob([texteDeSauvegarde()], { type: 'application/json' }));
+
+  const lien = document.createElement('a');
+  lien.href = url;
+  lien.download = nomDeSauvegarde();
+  document.body.appendChild(lien);
+  lien.click();
+  lien.remove();
+
+  // Le navigateur a besoin d'un instant pour lancer le téléchargement
+  // avant qu'on libère l'adresse.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$('#btn-export').addEventListener('click', async () => {
+  const resume = Store.exporter().resume;
   try {
-    const fichier = Store.exporter();
-
-    // Indenté exprès : quelqu'un qui ouvre le fichier doit pouvoir y
-    // reconnaître ses propres intentions, pas un mur de caractères.
-    const texte = JSON.stringify(fichier, null, 2);
-    const url   = URL.createObjectURL(new Blob([texte], { type: 'application/json' }));
-
-    const lien = document.createElement('a');
-    lien.href = url;
-    lien.download = nomDeSauvegarde();
-    document.body.appendChild(lien);
-    lien.click();
-    lien.remove();
-
-    // Le navigateur a besoin d'un instant pour lancer le téléchargement
-    // avant qu'on libère l'adresse.
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-    toast(`Sauvegarde enregistrée — ${phraseResume(fichier.resume)} 🤍`);
+    if (greffonNatif('Share')) await sauvegarderDansLAppli();
+    else                       sauvegarderSurLeSite();
+    toast(`Sauvegarde enregistrée — ${phraseResume(resume)} 🤍`);
   } catch (e) {
-    toast('La sauvegarde n\'a pas pu être enregistrée.');
+    // Refermer la fenêtre de partage sans rien choisir passe par ici :
+    // ce n'est pas une panne, on ne va pas inquiéter pour ça.
+    const annule = /cancel/i.test(String(e && e.message));
+    if (!annule) toast('La sauvegarde n\'a pas pu être enregistrée.');
   }
 });
 
@@ -1237,7 +1275,7 @@ $('#import-file').addEventListener('change', async e => {
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();
   toutAfficher();
-  planifierRappels();
+  carnetAChange();
   aller('today');
   toast(`Sauvegarde restaurée — ${phraseResume(verdict.resume)} 🤍`);
 });
@@ -1271,7 +1309,7 @@ $('#btn-recover').addEventListener('click', () => {
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();
   toutAfficher();
-  planifierRappels();
+  carnetAChange();
   aller('today');
   toast(`Ancien carnet récupéré — ${phraseResume(verdict.resume)} 🤍`);
 });
@@ -1281,6 +1319,7 @@ $('#btn-demo').addEventListener('click', () => {
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();
   toutAfficher();
+  carnetAChange();
   aller('today');
   toast('Données d\'exemple chargées ↺');
 });
@@ -1296,6 +1335,12 @@ $('#btn-clear').addEventListener('click', () => {
   if (!ok) return;
 
   Store.repartirDeZero();
+
+  // ⚠️ Le double aussi, sinon le carnet reviendrait tout seul à la
+  // prochaine ouverture — après avoir dit oui à « tout effacer ».
+  const Rangement = greffonNatif('Preferences');
+  if (Rangement) Rangement.remove({ key: CLE_DOUBLE }).catch(() => {});
+
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();
   toutAfficher();
@@ -1305,6 +1350,170 @@ $('#btn-clear').addEventListener('click', () => {
   $('#welcome-2').hidden = true;
   $('#welcome').hidden = false;
 });
+
+/* ═══════════════════════════════════════════════════════════
+   Les trois filets — ne plus jamais rien perdre
+   ───────────────────────────────────────────────────────────
+   Dans l'application, le carnet ne vit plus dans Chrome mais dans le
+   dossier privé de l'appli : vider les données du navigateur ne
+   l'atteint plus. C'est nettement plus sûr — mais « plus sûr » ne
+   suffit pas quand on a déjà tout perdu une fois. On empile donc
+   trois filets, et le carnet doit tomber à travers les trois pour
+   disparaître :
+
+     1. un DOUBLE rangé à côté, hors du navigateur, remis à jour à
+        chaque changement, et repris tout seul si le carnet est vide ;
+     2. une SAUVEGARDE EN FICHIER, une par jour, dans le dossier
+        Documents du téléphone — ces fichiers-là survivent même à la
+        désinstallation de l'application ;
+     3. la sauvegarde de Google, déjà active, à laquelle on ne touche
+        pas et sur laquelle on ne compte pas seule.
+
+   Sur le site web, aucun de ces filets n'existe : rien de tout ceci
+   ne s'y déclenche.
+   ═══════════════════════════════════════════════════════════ */
+
+const CLE_DOUBLE      = 'ibadah-double';
+const CLE_DERNIERE    = 'ibadah-derniere-sauvegarde-auto';
+const CLE_CHEMIN_VU   = 'ibadah-chemin-annonce';
+const DOSSIER_COPIES  = 'Ibadah';
+const COPIES_GARDEES  = 7;
+
+/* Attraper un greffon de l'application. Renvoie null sur le site web,
+   où « Capacitor » n'existe pas du tout : tout ce qui suit se
+   débranche alors tout seul. */
+function greffonNatif(nom) {
+  if (!estNatif()) return null;
+  const p = (typeof Capacitor !== 'undefined') && Capacitor.Plugins;
+  return (p && p[nom]) || null;
+}
+
+/* ─── Filet 1 : le double ───────────────────────────────────
+   On attend un instant avant d'écrire : cocher cinq dhikr d'affilée
+   ne doit pas déclencher cinq écritures. */
+let minuteurDouble = null;
+
+function sauverDouble(toutDeSuite) {
+  const Rangement = greffonNatif('Preferences');
+  if (!Rangement) return;
+  clearTimeout(minuteurDouble);
+
+  const ecrire = () =>
+    Rangement.set({ key: CLE_DOUBLE, value: texteDeSauvegarde() }).catch(() => {});
+
+  // Quand l'application s'en va, on n'attend pas : le délai ne serait
+  // peut-être jamais atteint, Android ferme sans prévenir.
+  if (toutDeSuite) ecrire();
+  else minuteurDouble = setTimeout(ecrire, 700);
+}
+
+/* Le carnet vient d'être modifié : on replanifie les rappels ET on
+   met le double à jour. Les deux vont toujours ensemble. */
+function carnetAChange() {
+  if (typeof planifierRappels === 'function') planifierRappels();
+  sauverDouble();
+}
+
+/* Au démarrage : si le carnet est vide alors qu'un double existe,
+   c'est que quelque chose l'a effacé. On le remet, et on le dit.
+
+   ⚠️ « Tout effacer » supprime aussi le double — sinon le carnet
+   reviendrait tout seul à la réouverture, et ce serait terrifiant. */
+async function recupererDouble() {
+  const Rangement = greffonNatif('Preferences');
+  if (!Rangement) return;
+
+  const ici = Store.exporter().resume;
+  if (ici.intentions || ici.joursNotes) { sauverDouble(); return; }
+
+  let brut = null;
+  try { brut = (await Rangement.get({ key: CLE_DOUBLE })).value; } catch (e) { return; }
+  if (!brut) return;
+
+  let contenu;
+  try { contenu = JSON.parse(brut); } catch (e) { return; }
+
+  const verdict = Store.importer(contenu);
+  if (!verdict.ok) return;
+  if (!verdict.resume.intentions && !verdict.resume.joursNotes) return;
+
+  appliquerTheme(Store.reglages().sombre);
+  depliees.clear();
+  toutAfficher();
+  $('#welcome').hidden = true;
+  if (typeof planifierRappels === 'function') planifierRappels();
+  toast(`Ton carnet a été récupéré — ${phraseResume(verdict.resume)} 🤍`);
+}
+
+/* ─── Filet 2 : une sauvegarde par jour, en fichier ─────────
+   Dans le dossier Documents du téléphone, donc HORS de l'application :
+   désinstaller Ibadah ne les emporte pas. On garde les 7 dernières —
+   assez pour revenir en arrière d'une semaine si quelque chose s'est
+   abîmé sans qu'on le remarque tout de suite. */
+async function sauvegardeDuJour() {
+  const Fs        = greffonNatif('Filesystem');
+  const Rangement = greffonNatif('Preferences');
+  if (!Fs || !Rangement) return;
+
+  const jour = Store.aujourdhui();
+  let derniere = null;
+  try { derniere = (await Rangement.get({ key: CLE_DERNIERE })).value; } catch (e) { return; }
+  if (derniere === jour) return;                    // déjà faite aujourd'hui
+
+  const resume = Store.exporter().resume;
+  if (!resume.intentions && !resume.joursNotes) return;   // rien à sauver
+
+  try {
+    await Fs.writeFile({
+      path: `${DOSSIER_COPIES}/${nomDeSauvegarde()}`,
+      data: texteDeSauvegarde(),
+      directory: 'DOCUMENTS', encoding: 'utf8', recursive: true
+    });
+    await Rangement.set({ key: CLE_DERNIERE, value: jour });
+  } catch (e) { return; }                           // pas d'accès : on n'insiste pas
+
+  await faireLeMenage(Fs);
+  await annoncerLeCheminUneFois(Fs, Rangement);
+}
+
+/* Les noms portent la date à l'endroit : les ranger par ordre
+   alphabétique les range donc par ordre chronologique. */
+async function faireLeMenage(Fs) {
+  try {
+    const dedans = await Fs.readdir({ path: DOSSIER_COPIES, directory: 'DOCUMENTS' });
+    const miennes = (dedans.files || [])
+      .map(f => (typeof f === 'string' ? f : f.name))
+      .filter(n => /^ibadah-sauvegarde-\d{4}-\d{2}-\d{2}\.json$/.test(n))
+      .sort();
+
+    for (const nom of miennes.slice(0, Math.max(0, miennes.length - COPIES_GARDEES))) {
+      await Fs.deleteFile({ path: `${DOSSIER_COPIES}/${nom}`, directory: 'DOCUMENTS' })
+        .catch(() => {});
+    }
+  } catch (e) { /* dossier illisible : les fichiers du jour sont écrits, c'est l'essentiel */ }
+}
+
+/* Un dossier qu'on ne sait pas retrouver ne rassure personne. On dit
+   son chemin une fois — il change selon la version d'Android. */
+async function annoncerLeCheminUneFois(Fs, Rangement) {
+  try {
+    if ((await Rangement.get({ key: CLE_CHEMIN_VU })).value) return;
+    const { uri } = await Fs.getUri({ path: DOSSIER_COPIES, directory: 'DOCUMENTS' });
+    await Rangement.set({ key: CLE_CHEMIN_VU, value: '1' });
+    const lisible = String(uri).replace(/^file:\/\//, '');
+    setTimeout(() => {
+      alert('Ibadah range désormais une sauvegarde par jour dans :\n\n' + lisible +
+            '\n\nCes fichiers restent sur le téléphone même si tu désinstalles ' +
+            'l\'application. Les 7 derniers jours sont gardés.');
+    }, 2200);
+  } catch (e) { /* tant pis pour l'annonce */ }
+}
+
+/* ─── Filet 3 : la sauvegarde de Google ─────────────────────
+   Rien à écrire : « android:allowBackup="true" » est déjà dans le
+   manifeste, et Android s'en occupe. On ne compte pas dessus seule —
+   elle exige le Wi-Fi, la charge, et ne rend le carnet qu'à une
+   réinstallation. C'est un filet, pas une garantie. */
 
 $('#hadith-refresh').addEventListener('click', () => chargerHadith(true));
 
@@ -1388,7 +1597,7 @@ function terminerBienvenue(avecPacks) {
   Store.marquerAccueilli();
   $('#welcome').hidden = true;
   toutAfficher();
-  planifierRappels();
+  carnetAChange();
   if (avecPacks && packsChoisis.size) toast('Ta liste est prête — qu\'Allah te facilite 🤍');
 }
 
@@ -1477,3 +1686,20 @@ toutAfficher();
 chargerHadith(false);
 
 if (!Store.estAccueilli()) $('#welcome').hidden = false;
+
+/* ─── Les filets se mettent en place ────────────────────────
+   Dans cet ordre, et pas un autre : on regarde d'abord s'il y a un
+   carnet à récupérer, et seulement ensuite on en fait la copie du
+   jour — sinon on écrirait un fichier vide par-dessus le bon. */
+(async function poserLesFilets() {
+  if (!estNatif()) return;
+  await recupererDouble();
+  await sauvegardeDuJour();
+})();
+
+/* Quand l'application passe en arrière-plan, on profite du moment pour
+   ranger le double : c'est le dernier instant sûr avant qu'Android
+   décide de fermer l'application sans prévenir. */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) sauverDouble(true);
+});
