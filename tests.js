@@ -1125,6 +1125,51 @@ groupe('Les pièges déjà rencontrés');
 
 
 /* ═══════════════════════════════════════════════════════════
+   11. La chaîne de fabrication de l'application Android
+   ═══════════════════════════════════════════════════════════
+   On modifie les fichiers à la racine, publier.py refabrique docs/,
+   Capacitor recopie docs/ dans android/. Chaque maillon sauté se voit
+   sur le téléphone sous la forme d'un bug déjà corrigé qui revient.
+   ═══════════════════════════════════════════════════════════ */
+groupe('La chaîne de fabrication de l\'appli');
+{
+  const pkg = JSON.parse(lire('package.json'));
+  const cap = JSON.parse(lire('capacitor.config.json'));
+  const s   = pkg.scripts || {};
+  const tel = s.tel || '';
+
+  vrai('npm run verif lance les vérifications', /node\s+tests\.js/.test(s.verif || ''));
+  vrai('npm run site refabrique le dossier docs', /publier\.py/.test(s.site || ''));
+
+  // ★ Le piège de l'étape 4 : oublier publier.py avant « cap sync » envoie
+  //   l'ANCIENNE version sur le téléphone. On corrige un bug, rien ne change
+  //   à l'écran, et on va chercher la cause ailleurs pendant une heure.
+  vrai('★ npm run tel refabrique docs/ AVANT de synchroniser',
+    tel.includes('publier.py') &&
+    tel.indexOf('publier.py') < tel.indexOf('cap sync'));
+
+  // ★ « npx cap run android » est cassé sous Windows : le CLI de Capacitor
+  //   appelle « gradlew » au lieu de « gradlew.bat ». On construit et on
+  //   installe nous-mêmes, ce qui donne exactement le même résultat.
+  faux('★ npm run tel n\'utilise pas « cap run », cassé sous Windows',
+    /cap\s+run/.test(tel));
+  vrai('il construit l\'apk avec gradlew.bat', /gradlew\.bat/.test(tel));
+  vrai('puis il le pose sur le téléphone', /adb\s+install/.test(tel));
+
+  // Capacitor ne doit lire que le dossier que publier.py fabrique.
+  verifier('★ l\'appli est fabriquée à partir de docs/', cap.webDir, 'docs');
+  verifier('le nom de code de l\'appli est inchangé', cap.appId, 'com.mucahid.ibadah');
+
+  // ★ Le navigateur range les données selon l'adresse sous laquelle tourne
+  //   la page. Changer cette adresse ferait DISPARAÎTRE le carnet d'un coup.
+  faux('★ aucun androidScheme dans capacitor.config.json',
+    'androidScheme' in (cap.server || {}) || 'androidScheme' in (cap.android || {}));
+  faux('★ aucun hostname dans capacitor.config.json',
+    'hostname' in (cap.server || {}));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    Le verdict
    ═══════════════════════════════════════════════════════════ */
 
