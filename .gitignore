@@ -1,6 +1,7 @@
 # Outils et réglages de l'assistant — ne doivent jamais être publiés
 .claude/
 .impeccable/
+.agents/
 
 # Notes de travail : elles restent sur l'ordinateur de Mucahid.
 # HANDOFF.md liste ce qui n'est pas testé et ce qui bloque : c'est vrai,

@@ -1102,6 +1102,21 @@ groupe('Les pièges déjà rencontrés');
   vrai('★ la règle [hidden] { display:none !important } est toujours là',
     /\[hidden\]\s*\{[^}]*display:\s*none\s*!important/.test(css));
 
+  // ★ Un trait de séparation flottait TOUT EN HAUT de l'encadré des rappels,
+  //   sans rien à séparer. Vu sur le vrai téléphone le 16 août 2026 : la
+  //   ligne « Sonner à l'heure exacte » disparaît une fois l'autorisation
+  //   donnée, et l'ancienne règle (« pas de trait sur la première ligne »)
+  //   comptait la ligne cachée comme première. Une ligne ne prend un trait
+  //   que s'il existe une ligne VISIBLE avant elle.
+  vrai('★ le trait de séparation ignore les lignes cachées',
+    /\.list \.row:not\(\[hidden\]\)\s*~\s*\.row:not\(\[hidden\]\)\s*\{[^}]*border-top-color/.test(css));
+  vrai('★ et plus rien ne se fie au rang de la première ligne',
+    !/\.list \.row:first-child\s*\{[^}]*border-top/.test(css));
+  // Le trait reste réservé même quand il ne se voit pas : sinon la première
+  // ligne serait 1 pixel plus courte que les autres.
+  vrai('la hauteur des lignes reste identique',
+    /\.row\s*\{[^}]*border-top:\s*1px solid transparent/.test(css));
+
   // Tous les fichiers chargés par la page doivent exister,
   // être publiés, être estampillés et être gardés hors-ligne.
   const charges = [
