@@ -8,17 +8,17 @@
    ci-dessous, sinon le navigateur continuera de servir l'ancienne copie.
    ═══════════════════════════════════════════════════════════ */
 
-const VERSION = 'ibadah-001944bd';
+const VERSION = 'ibadah-f20c3af8';
 
 const FICHIERS = [
   './',
   './index.html',
-  './styles.css?v=001944bd',
-  './store.js?v=001944bd',
-  './adhkar.js?v=001944bd',
-  './feuille.js?v=001944bd',
-  './app.js?v=001944bd',
-  './rappels.js?v=001944bd',
+  './styles.css?v=f20c3af8',
+  './store.js?v=f20c3af8',
+  './adhkar.js?v=f20c3af8',
+  './feuille.js?v=f20c3af8',
+  './app.js?v=f20c3af8',
+  './rappels.js?v=f20c3af8',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

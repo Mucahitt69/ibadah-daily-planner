@@ -1318,6 +1318,22 @@ $('#btn-recover').addEventListener('click', () => {
 });
 
 $('#btn-demo').addEventListener('click', () => {
+  // ⚠️ Ce bouton ne complète pas le carnet : il le REMPLACE
+  // (`store.js`, chargerDemo → `etat = vide()`). Il détruisait donc autant
+  // que « Tout effacer », qui est juste en dessous et qu'on avait pris soin
+  // de protéger — le même piège, une ligne plus haut, resté ouvert.
+  // On ne demande rien quand il n'y a rien à perdre : sur un carnet vide,
+  // charger l'exemple est justement la bonne façon de découvrir l'appli.
+  const r = Store.exporter().resume;
+  if (r.intentions || r.joursNotes) {
+    const ok = confirm(
+      `Les données d'exemple REMPLACENT ton carnet : ${phraseResume(r)} ` +
+      `seront perdues.\n\n` +
+      `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.\n\n` +
+      `Charger quand même les données d'exemple ?`);
+    if (!ok) return;
+  }
+
   Store.chargerDemo();
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();

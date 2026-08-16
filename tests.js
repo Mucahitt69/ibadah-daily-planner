@@ -1041,6 +1041,20 @@ groupe('Sauvegarder et restaurer');
     vrai('★ tout effacer demande confirmation', !!clear && /confirm\(/.test(clear[0]));
     vrai('et rappelle de sauvegarder d\'abord', !!clear && /sauvegarde/.test(clear[0]));
 
+    // ★ « Charger des données d'exemple » REMPLACE le carnet (store.js :
+    //   chargerDemo fait `etat = vide()`). Il détruisait donc autant que
+    //   « Tout effacer », juste en dessous, sans rien demander : le même
+    //   piège, une ligne plus haut. Trouvé le 16 août 2026.
+    const demo = app.match(/#btn-demo'\)\.addEventListener[\s\S]*?\n\}\);/);
+    vrai('★ charger l\'exemple demande confirmation', !!demo && /confirm\(/.test(demo[0]));
+    vrai('et rappelle de sauvegarder d\'abord', !!demo && /sauvegarde/.test(demo[0]));
+    // Sur un carnet vide il n'y a rien à perdre : demander serait un obstacle
+    // posé devant la seule bonne façon de découvrir l'application.
+    vrai('★ mais ne demande rien si le carnet est vide',
+      !!demo && /if \(r\.intentions \|\| r\.joursNotes\)/.test(demo[0]));
+    vrai('★ et chargerDemo remplace bien tout (ce qui justifie la question)',
+      /function chargerDemo\(\)[\s\S]{0,200}?etat = vide\(\)/.test(lire('store.js')));
+
     // Le bouton de récupération existe, part caché, et demande avant de remplacer.
     vrai('le bouton « Récupérer » existe', /id="btn-recover"/.test(html));
     vrai('★ il est caché par défaut',
