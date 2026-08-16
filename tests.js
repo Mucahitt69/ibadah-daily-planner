@@ -1451,6 +1451,25 @@ groupe('Les trois filets');
   vrai('et le site garde son téléchargement, qui marche',
     /lien\.download = nomDeSauvegarde/.test(app));
 
+  /* ─── Ce que le filet 2 oblige à dire ───
+     ★ « Désinstaller : tout part avec elle » est devenu FAUX le jour où
+     les copies quotidiennes sont allées dans Documents — elles y restent,
+     c'est tout leur intérêt. Une politique de confidentialité qui se
+     trompe là-dessus, ce n'est pas un détail : c'est une promesse non
+     tenue à quelqu'un qui voulait effacer ses données, et une réponse
+     fausse au formulaire du Play Store. */
+  {
+    const conf = lire('confidentialite.html');
+    faux('★ la politique ne promet plus que désinstaller efface TOUT',
+      /désinstaller l'application : tout part avec elle/.test(conf));
+    vrai('★ elle dit où sont les copies qui survivent',
+      /Documents\/Ibadah/.test(conf) && /ne partent pas/.test(conf));
+    vrai('★ et elle explique comment les effacer aussi',
+      /supprime le dossier/.test(conf));
+    vrai('elle signale la copie que Google peut garder',
+      /compte Google/.test(conf));
+  }
+
   /* ─── store.js doit rester lisible sans navigateur ───
      ★ Une seule mention non protégée de window ou Capacitor dans
      store.js, et toutes les vérifications ci-dessus s'effondrent d'un
