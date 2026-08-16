@@ -1604,6 +1604,48 @@ groupe('Nous écrire');
 
 
 /* ═══════════════════════════════════════════════════════════
+   16. L'icône et ses images sources
+   ═══════════════════════════════════════════════════════════ */
+groupe('L\'icône');
+{
+  const dans = (...bouts) => path.join(RACINE, ...bouts);
+
+  // ★ Les cinq images sont arrivées dans node_modules/@capacitor/assets/files.
+  //   C'est l'endroit le plus dangereux du projet : il est exclu du dépôt, et
+  //   un simple « npm install » le vide. Le travail d'un dessinateur y aurait
+  //   disparu sans un bruit, sans même une ligne dans git pour le dire.
+  const sources = ['icon-only.png', 'icon-foreground.png', 'icon-background.png',
+                   'splash.png', 'splash-dark.png'];
+  verifier('★ les cinq images sources sont dans le dépôt, pas dans node_modules',
+    sources.filter(n => !fs.existsSync(dans('assets', n))), []);
+
+  faux('★ et le dossier assets/ n\'est pas exclu du dépôt',
+    /^\s*\/?assets\/?\s*$/m.test(lire('.gitignore')));
+
+  vrai('le script qui les dessine est gardé avec elles',
+    fs.existsSync(dans('assets', '_generate.py')));
+
+  // Le script écrivait vers le dossier de la machine où il a été écrit :
+  // le relancer ici n'aurait rien produit d'utile.
+  faux('★ et il écrit à côté de lui, pas sur une autre machine',
+    /\/mnt\/user-data/.test(lire('assets/_generate.py')));
+
+  // ★ Les icônes du site étaient des aplats de 823 et 2 836 octets fabriqués
+  //   par script — floues dès qu'on les agrandit. C'est un plancher, pas une
+  //   mesure : il attrape un retour en arrière vers une source fabriquée.
+  vrai('★ les icônes du site viennent de la vraie source, plus d\'un aplat',
+    fs.statSync(dans('icons', 'icon-192.png')).size > 3000 &&
+    fs.statSync(dans('icons', 'icon-512.png')).size > 8000);
+
+  // Le manifeste réutilise le 512 pour l'entrée « maskable ». C'est bon
+  // uniquement parce que le motif tient dans les 80 % du centre — mesuré.
+  const man = JSON.parse(lire('manifest.webmanifest'));
+  vrai('le manifeste déclare bien une icône « maskable »',
+    (man.icons || []).some(i => i.purpose === 'maskable'));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    Le verdict
    ═══════════════════════════════════════════════════════════ */
 

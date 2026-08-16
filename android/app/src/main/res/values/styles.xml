@@ -16,7 +16,11 @@
     </style>
 
 
+    <!-- L'écran de lancement. C'était un aplat crème le temps qu'il n'existe
+         pas de vraie image : ça suffisait à supprimer l'éclair blanc, mais ça
+         ne montrait rien. Maintenant que le motif existe, on l'affiche — et
+         « drawable-night » prend le relais en mode sombre, tout seul. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@color/ibadah_fond</item>
+        <item name="android:background">@drawable/splash</item>
     </style>
 </resources>
