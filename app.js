@@ -1513,6 +1513,83 @@ async function annoncerLeCheminUneFois(Fs, Rangement) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   Nous écrire
+   ───────────────────────────────────────────────────────────
+   Un testeur qui rencontre un problème doit pouvoir le dire sans
+   effort. Et un rapport sans le modèle du téléphone ni l'écran
+   concerné est souvent inexploitable : on cherche des heures un
+   défaut qui n'existe que sur un appareil.
+
+   ⚠️ On n'a PAS fait de messagerie : un vrai chat, c'est un serveur,
+   de la modération, une disponibilité, et des données personnelles à
+   déclarer. Un e-mail pré-rempli couvre l'essentiel du besoin, et
+   n'engage à rien de permanent.
+
+   ⚠️ Et rien du carnet n'est joint. Jamais. Ce message part chez
+   quelqu'un : il ne contient que des renseignements techniques, et
+   l'utilisateur les voit entièrement avant d'envoyer.
+   ═══════════════════════════════════════════════════════════ */
+
+const ADRESSE_CONTACT = 'busala.safa@gmail.com';
+
+/* La version est déjà collée sur les fichiers par publier.py, sous la
+   forme « app.js?v=37e117f2 ». On la relit là où elle est plutôt que
+   d'en tenir une deuxième à jour à la main — deux versions qui se
+   contredisent valent moins qu'aucune. */
+function versionPublieee() {
+  try {
+    const balise = document.querySelector('script[src*="app.js"]');
+    const trouve = balise && balise.getAttribute('src').match(/[?&]v=([\w.-]+)/);
+    return trouve ? trouve[1] : 'en développement';
+  } catch (e) { return 'inconnue'; }
+}
+
+/* « SM-S921B » plutôt que les trois lignes du navigateur. Si le format
+   change, on rend la ligne entière : illisible, mais jamais faux. */
+function modeleDuTelephone() {
+  const ua = (navigator.userAgent || '');
+  const m = ua.match(/;\s*([^;)]+?)\s+Build\//);
+  if (m) return m[1].trim();
+  const android = ua.match(/Android [\d.]+/);
+  return android ? android[0] : ua.slice(0, 80);
+}
+
+function ecranAffiche() {
+  const actif = document.querySelector('.screen.is-active');
+  const titre = actif && actif.querySelector('.topbar__title');
+  return titre ? titre.textContent.trim() : 'inconnu';
+}
+
+function messageDeContact() {
+  return [
+    '',
+    '',
+    '— — — — — — — — — — — — — — —',
+    'Ces quelques lignes aident à retrouver le problème.',
+    'Tu peux les effacer si tu préfères.',
+    '',
+    'Version : ' + versionPublieee(),
+    'Appareil : ' + modeleDuTelephone(),
+    'Application installée : ' + (estNatif() ? 'oui' : 'non, ouverte dans le navigateur'),
+    'Écran affiché : ' + ecranAffiche(),
+    'Langue : ' + (navigator.language || 'inconnue')
+  ].join('\n');
+}
+
+$('#btn-contact').addEventListener('click', () => {
+  const sujet = 'Ibadah — un retour';
+  const lien = 'mailto:' + ADRESSE_CONTACT +
+    '?subject=' + encodeURIComponent(sujet) +
+    '&body='    + encodeURIComponent(messageDeContact());
+
+  // Si aucune application de courrier n'est installée, il ne se passera
+  // rien du tout. L'adresse reste alors affichée sous le bouton : on ne
+  // laisse jamais quelqu'un devant un bouton muet.
+  $('#contact-help').textContent = ADRESSE_CONTACT;
+  location.href = lien;
+});
+
+/* ═══════════════════════════════════════════════════════════
    Ce qui change quand on devient une vraie application
    ───────────────────────────────────────────────────────────
    Rien de tout ceci ne se voit sur un ordinateur : ce sont les

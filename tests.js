@@ -1557,6 +1557,53 @@ groupe('Le passage en application');
 
 
 /* ═══════════════════════════════════════════════════════════
+   15. Nous écrire
+   ═══════════════════════════════════════════════════════════ */
+groupe('Nous écrire');
+{
+  const app  = lire('app.js');
+  const html = lire('index.html');
+  const conf = lire('confidentialite.html');
+
+  vrai('le bouton existe et il est branché',
+    /id="btn-contact"/.test(html) && /#btn-contact'\)\.addEventListener/.test(app));
+
+  // ★ Deux adresses qui se contredisent, c'est un message qui se perd.
+  const dansApp  = (app.match(/ADRESSE_CONTACT = '([^']+)'/)  || [])[1];
+  const dansConf = (conf.match(/href="mailto:([^"]+)"/)       || [])[1];
+  verifier('★ l\'adresse est la même que dans la politique de confidentialité',
+    dansApp, dansConf);
+
+  // Ce qui rend un rapport exploitable : sans ça, on cherche des heures
+  // un défaut qui n'existe que sur un modèle de téléphone.
+  const message = app.match(/function messageDeContact[\s\S]*?\n\}/);
+  vrai('★ le message porte la version, l\'appareil et l\'écran',
+    !!message && /versionPublieee\(\)/.test(message[0])
+              && /modeleDuTelephone\(\)/.test(message[0])
+              && /ecranAffiche\(\)/.test(message[0]));
+
+  // ★ Ce message part chez quelqu'un. Le carnet ne doit JAMAIS y entrer,
+  //   ni par une sauvegarde, ni par une liste d'intentions.
+  faux('★ et il n\'emporte RIEN du carnet',
+    !!message && /Store\.exporter|texteDeSauvegarde|tachesDuJour|journal/.test(message[0]));
+
+  // La version est relue là où publier.py l'a collée : en tenir une
+  // seconde à la main finirait par la contredire.
+  vrai('★ la version est relue sur le fichier, pas recopiée à la main',
+    /script\[src\*="app\.js"\]/.test(app) &&
+    /getAttribute\('src'\)\.match/.test(app));
+
+  // ★ Si aucune application de courrier n'existe, le bouton ne fait rien —
+  //   exactement le piège de « Sauvegarder ». L'adresse doit rester lisible.
+  vrai('★ l\'adresse s\'affiche sous le bouton, au cas où rien ne s\'ouvre',
+    /#contact-help'\)\.textContent = ADRESSE_CONTACT/.test(app));
+
+  vrai('l\'écran annonce ce que le message emporte',
+    /Rien de ton carnet n'est joint/.test(html));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    Le verdict
    ═══════════════════════════════════════════════════════════ */
 
