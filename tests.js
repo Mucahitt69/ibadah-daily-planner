@@ -1808,7 +1808,72 @@ groupe('L\'icône');
 
 
 /* ═══════════════════════════════════════════════════════════
-   17. La signature de la version envoyée à Google
+   17. Les captures d'écran de la fiche du Play Store
+   ═══════════════════════════════════════════════════════════
+   Elles ne servent pas dans l'application : elles se déposent une fois
+   dans le formulaire du Play Console, et elles restent publiques pour
+   toujours. Une taille fausse est refusée par le formulaire, sans qu'il
+   dise toujours pourquoi.
+   ═══════════════════════════════════════════════════════════ */
+groupe('Les captures de la fiche');
+{
+  const dossier = path.join(RACINE, 'assets', 'play-store-captures');
+  const dedans = fs.existsSync(dossier) ? fs.readdirSync(dossier) : [];
+
+  function tailleDuPng(nom) {
+    const o = fs.readFileSync(path.join(dossier, nom));
+    return { large: o.readUInt32BE(16), haut: o.readUInt32BE(20) };
+  }
+
+  // Celles qu'on dépose : « fiche-… ». Les autres sont les originaux bruts.
+  const pretes = dedans.filter(n => /^fiche-.*\.png$/.test(n)).sort();
+  const brutes = dedans.filter(n => /^\d-.*\.png$/.test(n)).sort();
+
+  // Le Play Store en demande 2 au minimum et en accepte 8.
+  vrai('★ il y a entre 4 et 8 captures prêtes à déposer',
+    pretes.length >= 4 && pretes.length <= 8);
+
+  // ★ L'écran du S24 fait 1080 × 2340, soit 2,17 — le Play Store n'accepte
+  //   pas plus haut que 9:16. Une capture brute est refusée telle quelle.
+  verifier('★ chaque capture fait exactement 1080 × 1920',
+    pretes.filter(n => {
+      const t = tailleDuPng(n);
+      return t.large !== 1080 || t.haut !== 1920;
+    }), []);
+
+  verifier('aucune capture ne dépasse les 8 Mo du Play Store',
+    pretes.filter(n => fs.statSync(path.join(dossier, n)).size > 8 * 1024 * 1024), []);
+
+  // Les originaux du téléphone restent : sans eux, changer le cadrage
+  // obligerait à refaire toute la manœuvre sur le téléphone — carnet
+  // sauvegardé, données d'exemple, restauration.
+  vrai('★ les captures brutes du téléphone sont gardées',
+    brutes.length >= pretes.length);
+
+  const chemin = path.join(RACINE, 'assets', '_captures-fiche.ps1');
+  vrai('le script qui les met au format est gardé avec elles',
+    fs.existsSync(chemin));
+
+  // ⚠️ Lu seulement s'il existe : sinon un fichier disparu ferait exploser
+  //    tests.js au lieu de virer au rouge, emportant la suite avec lui.
+  const script = fs.existsSync(chemin) ? lire('assets/_captures-fiche.ps1') : '';
+
+  // ★ Le piège payé en écrivant ce script : sans [double], PowerShell fait
+  //   de 1080/1080 un ENTIER, [math]::Min choisit sa version entière,
+  //   arrondit 0,86 à 1 — et l'image déborde de 150 points en haut et en
+  //   bas. La barre d'état et la barre d'onglets sont coupées, en silence.
+  vrai('★ le calcul d\'échelle est fait en nombres à virgule',
+    /\[double\]1080/.test(script) && /\[double\]1920/.test(script));
+
+  // ★ Et l'autre piège du même script : -Filter ne comprend pas [0-9].
+  //   Un filtre qui n'attrape rien ne se plaint pas, il ne fait rien.
+  faux('★ le tri des fichiers ne passe pas par un -Filter en [0-9]',
+    /-Filter\s+'\[0-9\]/.test(script));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   18. La signature de la version envoyée à Google
    ═══════════════════════════════════════════════════════════
    Le trousseau de signature est la seule chose de ce projet qui ne se
    refabrique pas. Le perdre, c'est perdre le droit de mettre l'appli à
