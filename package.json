@@ -10,7 +10,8 @@
     "test": "node tests.js",
     "verif": "node tests.js",
     "site": "python publier.py",
-    "tel": "python publier.py && npx cap sync android && android\\gradlew.bat -p android assembleDebug && adb install -r android/app/build/outputs/apk/debug/app-debug.apk"
+    "tel": "python publier.py && npx cap sync android && android\\gradlew.bat -p android assembleDebug && adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
+    "envoi": "python publier.py && npx cap sync android && android\\gradlew.bat -p android bundleRelease"
   },
   "repository": {
     "type": "git",

@@ -1766,6 +1766,110 @@ groupe('L\'icône');
 
 
 /* ═══════════════════════════════════════════════════════════
+   17. La signature de la version envoyée à Google
+   ═══════════════════════════════════════════════════════════
+   Le trousseau de signature est la seule chose de ce projet qui ne se
+   refabrique pas. Le perdre, c'est perdre le droit de mettre l'appli à
+   jour — pour tous les testeurs, définitivement. Le laisser partir sur
+   un dépôt PUBLIC, c'est pire : n'importe qui pourrait signer à sa place.
+
+   Ces vérifications ne prouvent pas que la clé existe (elle vit hors du
+   dépôt, exprès). Elles surveillent les trois façons de la perdre.
+   ═══════════════════════════════════════════════════════════ */
+groupe('La signature');
+{
+  const gitignore = lire('.gitignore');
+  const gradle    = lire('android/app/build.gradle');
+  const modele    = lire('android/keystore.properties.exemple');
+  const envoi     = (JSON.parse(lire('package.json')).scripts || {}).envoi || '';
+
+  // ★ Les trois lignes qui empêchent le trousseau et son mot de passe de
+  //   partir sur GitHub. Le dépôt est public : une seule effacée suffit.
+  vrai('★ le trousseau .jks ne peut pas partir sur GitHub',
+    /^\*\.jks\s*$/m.test(gitignore));
+  vrai('l\'autre format de trousseau non plus',
+    /^\*\.keystore\s*$/m.test(gitignore));
+  vrai('★ ni le fichier qui porte le mot de passe',
+    /^keystore\.properties\s*$/m.test(gitignore));
+
+  // ★ Et le trousseau ne doit pas non plus DORMIR dans le dossier du projet :
+  //   .gitignore le protège aujourd'hui, mais sa place est ailleurs, en trois
+  //   copies. Un fichier qu'on ne peut pas refabriquer n'a rien à faire dans
+  //   un dossier qu'on publie.
+  const trousseaux = [];
+  (function fouiller(dossier) {
+    for (const e of fs.readdirSync(dossier, { withFileTypes: true })) {
+      if (['node_modules', '.git', 'build', '.gradle'].includes(e.name)) continue;
+      const chemin = path.join(dossier, e.name);
+      if (e.isDirectory()) fouiller(chemin);
+      else if (/\.(jks|keystore|p12)$/i.test(e.name)) {
+        trousseaux.push(path.relative(RACINE, chemin));
+      }
+    }
+  })(RACINE);
+  verifier('★ aucun trousseau ne dort dans le dossier du projet', trousseaux, []);
+
+  // ★ Le mot de passe ne doit jamais être écrit dans un fichier suivi par git.
+  //   Gradle va le chercher dans un fichier à part, qui reste sur l'ordinateur.
+  faux('★ aucun mot de passe écrit en clair dans build.gradle',
+    /(storePassword|keyPassword)\s*=?\s+["']/.test(gradle));
+  vrai('build.gradle lit la clé dans un fichier gardé à part',
+    /keystore\.properties/.test(gradle));
+
+  // Un fichier de clés à moitié rempli donnerait « mot de passe incorrect » —
+  // on cherche alors la clé, le trousseau, l'alias… tout sauf la bonne cause.
+  vrai('★ un fichier de clés pas encore rempli est dit en français',
+    /A-REMPLIR/.test(gradle));
+
+  // ★ On isole le bloc « release » avant de chercher dedans. Chercher
+  //   « signingConfig » dans TOUT le fichier passerait au vert même si la
+  //   ligne avait été retirée du bon endroit — c'est le genre de test qui
+  //   rassure sans rien vérifier (déjà payé le 17 août).
+  const blocRelease = (gradle.match(/release\s*\{[^}]*\}/g) || [])
+    .find(b => /proguardFiles/.test(b)) || '(bloc release introuvable)';
+  vrai('★ la version envoyée à Google est signée, pas laissée nue',
+    /signingConfig/.test(blocRelease));
+
+  // Google n'accepte plus de .apk pour une NOUVELLE application : il veut un
+  // .aab, dont il tire lui-même l'apk adapté à chaque téléphone.
+  vrai('★ npm run envoi fabrique un .aab, pas un .apk',
+    /bundleRelease/.test(envoi));
+  faux('et il ne fabrique pas un apk de release',
+    /assembleRelease/.test(envoi));
+
+  // Le même piège qu'à l'étape 4, en plus cher : sans publier.py, on enverrait
+  // à Google l'ANCIENNE version du site — et on ne le verrait qu'après.
+  vrai('★ npm run envoi refabrique docs/ AVANT de synchroniser',
+    envoi.includes('publier.py') &&
+    envoi.indexOf('publier.py') < envoi.indexOf('cap sync'));
+
+  // Google refuse un numéro de version déjà vu. Ici on vérifie seulement
+  // qu'il en existe un, entier — l'augmenter reste un geste réfléchi.
+  const numero = Number((gradle.match(/versionCode\s+(\d+)/) || [])[1]);
+  vrai('l\'application porte un numéro de version entier',
+    Number.isInteger(numero) && numero >= 1);
+
+  // ★ Le nom de version est celui que le testeur lira sur la fiche du Store.
+  //   Il doit rester d'accord avec celui écrit dans l'application, sinon
+  //   personne ne sait quelle version il a entre les mains.
+  const nomAndroid = (gradle.match(/versionName\s+"([^"]+)"/) || [])[1];
+  const nomAffiche = (lire('index.html').match(/version\s+(\d+\.\d+)/) || [])[1];
+  verifier('★ le nom de version est celui affiché dans l\'appli',
+    nomAndroid, nomAffiche);
+
+  // Le modèle, lui, est public : il ne doit contenir que des trous à remplir.
+  vrai('le modèle de fichier de clés ne contient aucun vrai mot de passe',
+    /storePassword=A-REMPLIR/.test(modele) && /keyPassword=A-REMPLIR/.test(modele));
+
+  // ⚠️ Dans ce genre de fichier, la barre « \ » a un sens spécial : un chemin
+  //    Windows écrit avec des « \ » serait mal lu, Gradle ne trouverait pas le
+  //    trousseau, et le message d'erreur ne dirait pas ça.
+  faux('★ et il montre le chemin avec des barres obliques',
+    /storeFile=.*\\/.test(modele));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    Le verdict
    ═══════════════════════════════════════════════════════════ */
 

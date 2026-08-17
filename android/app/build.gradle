@@ -1,5 +1,39 @@
 apply plugin: 'com.android.application'
 
+/* ── La signature de la version envoyée à Google (étape 10) ─────────────────
+   Le trousseau (.jks) et son mot de passe ne sont JAMAIS dans le dépôt : le
+   dépôt est public. Gradle va les chercher dans android/keystore.properties,
+   un fichier qui reste sur l'ordinateur de Mucahid (exclu par .gitignore).
+   Modèle à recopier : android/keystore.properties.exemple
+
+   Sans ce fichier, tout continue de marcher pour l'essai sur le téléphone
+   (npm run tel) : seule la version « à envoyer à Google » a besoin de la clé. */
+def fichierCles = rootProject.file('keystore.properties')
+def cles = new Properties()
+if (fichierCles.exists()) {
+    fichierCles.withInputStream { cles.load(it) }
+}
+
+/* Deux messages clairs plutôt qu'une erreur incompréhensible de Gradle.
+   Ils ne se déclenchent que pour la version d'envoi : la construction de tous
+   les jours (npm run tel) n'a pas besoin de la clé et ne doit pas s'arrêter. */
+def versionDEnvoi = gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }
+
+if (versionDEnvoi && !fichierCles.exists()) {
+    throw new GradleException(
+        "\n\n  Il manque le fichier android/keystore.properties.\n" +
+        "  Sans lui, l'application ne peut pas etre signee, donc pas envoyee a Google.\n" +
+        "  Recopie android/keystore.properties.exemple sous le nom keystore.properties\n" +
+        "  et remplis ses 4 lignes. Voir l'etape 10 de PLAN-ANDROID.md.\n")
+}
+
+if (versionDEnvoi && (cles['storePassword'] ?: '').contains('A-REMPLIR')) {
+    throw new GradleException(
+        "\n\n  Le fichier android/keystore.properties est la, mais il porte encore\n" +
+        "  A-REMPLIR a la place du mot de passe du trousseau.\n" +
+        "  Ouvre-le et remplace les deux A-REMPLIR par ton mot de passe.\n")
+}
+
 android {
     namespace = "com.mucahid.ibadah"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +41,10 @@ android {
         applicationId "com.mucahid.ibadah"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // ⚠️ versionCode doit AUGMENTER de 1 à chaque envoi au Play Store,
+        //    sans exception. Google refuse un numéro déjà vu.
         versionCode 1
-        versionName "1.0"
+        versionName "0.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +52,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (fichierCles.exists()) {
+                storeFile     rootProject.file(cles['storeFile'])
+                storePassword cles['storePassword']
+                keyAlias      cles['keyAlias']
+                keyPassword   cles['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig fichierCles.exists() ? signingConfigs.release : null
         }
     }
 }
