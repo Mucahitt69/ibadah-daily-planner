@@ -1762,6 +1762,48 @@ groupe('L\'icône');
   const man = JSON.parse(lire('manifest.webmanifest'));
   vrai('le manifeste déclare bien une icône « maskable »',
     (man.icons || []).some(i => i.purpose === 'maskable'));
+
+  /* ─── Les deux images de la fiche du Play Store ───────────────────────
+     Elles ne servent pas dans l'appli : elles se déposent une fois dans le
+     formulaire du Play Console. Une taille fausse s'y voit tout de suite —
+     le formulaire refuse le fichier, sans toujours dire pourquoi. */
+  function tailleDuPng(chemin) {
+    const o = fs.readFileSync(chemin);
+    return { large: o.readUInt32BE(16), haut: o.readUInt32BE(20) };
+  }
+
+  verifier('★ l\'icône de la fiche fait exactement 512 × 512',
+    tailleDuPng(dans('assets', 'play-store-icone.png')), { large: 512, haut: 512 });
+  verifier('le bandeau de la fiche fait exactement 1024 × 500',
+    tailleDuPng(dans('assets', 'play-store-bandeau.png')), { large: 1024, haut: 500 });
+
+  // Le Play Store n'accepte pas une icône de plus d'un mégaoctet.
+  vrai('l\'icône de la fiche tient sous le mégaoctet',
+    fs.statSync(dans('assets', 'play-store-icone.png')).size < 1024 * 1024);
+
+  // Comme pour le bandeau : le script qui la fabrique reste à côté d'elle,
+  // sinon personne ne saura la refaire le jour où le motif changera.
+  const scriptIcone = dans('assets', '_icone-store.ps1');
+  vrai('le script qui fabrique l\'icône de la fiche est gardé avec elle',
+    fs.existsSync(scriptIcone));
+
+  // ⚠️ On lit le script SEULEMENT s'il existe. Sans cette précaution, un
+  //    fichier disparu ne rendait pas la vérification rouge : il faisait
+  //    exploser tests.js, emportant avec lui toutes les vérifications
+  //    suivantes — on ne voyait plus rien du tout. Mesuré, pas supposé.
+
+  // ★ Ce script repose le motif sur son fond au lieu de redessiner : c'est ce
+  //   qui garantit que l'icône du téléphone, le bandeau et la fiche montrent
+  //   exactement le même dessin.
+  const script = fs.existsSync(scriptIcone) ? lire('assets/_icone-store.ps1') : '';
+  vrai('★ l\'icône de la fiche vient du même dessin que celle du téléphone',
+    /icon-foreground\.png/.test(script) && /icon-background\.png/.test(script));
+
+  // ★ icon-background.png n'est pas tout à fait opaque (coins à alpha 220).
+  //   Sans le fond plein posé dessous, l'icône partirait transparente — et
+  //   la fiche du Play Store la refuse.
+  vrai('★ et elle est posée sur un fond plein, sans transparence',
+    /\$g\.Clear\(/.test(script));
 }
 
 
