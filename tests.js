@@ -1034,11 +1034,15 @@ groupe('Sauvegarder et restaurer');
     vrai('l\'écran prévient que tout est local', /efface définitivement/.test(html));
 
     // Restaurer et tout effacer sont irréversibles : ils doivent demander.
+    // ⚠️ On cherche `await demander(` et non `confirm(` : le confirm() du
+    //   navigateur écrit CANCEL / OK en anglais dans l'application, sans
+    //   moyen de traduire. Il a été remplacé par la question maison
+    //   (groupe « Les questions en français », plus bas).
     const bloc = app.match(/#import-file'\)\.addEventListener[\s\S]*?\n\}\);/);
-    vrai('★ restaurer demande confirmation', !!bloc && /confirm\(/.test(bloc[0]));
+    vrai('★ restaurer demande confirmation', !!bloc && /await demander\(/.test(bloc[0]));
 
     const clear = app.match(/#btn-clear'\)\.addEventListener[\s\S]*?\n\}\);/);
-    vrai('★ tout effacer demande confirmation', !!clear && /confirm\(/.test(clear[0]));
+    vrai('★ tout effacer demande confirmation', !!clear && /await demander\(/.test(clear[0]));
     vrai('et rappelle de sauvegarder d\'abord', !!clear && /sauvegarde/.test(clear[0]));
 
     // ★ « Charger des données d'exemple » REMPLACE le carnet (store.js :
@@ -1046,7 +1050,7 @@ groupe('Sauvegarder et restaurer');
     //   « Tout effacer », juste en dessous, sans rien demander : le même
     //   piège, une ligne plus haut. Trouvé le 16 août 2026.
     const demo = app.match(/#btn-demo'\)\.addEventListener[\s\S]*?\n\}\);/);
-    vrai('★ charger l\'exemple demande confirmation', !!demo && /confirm\(/.test(demo[0]));
+    vrai('★ charger l\'exemple demande confirmation', !!demo && /await demander\(/.test(demo[0]));
     vrai('et rappelle de sauvegarder d\'abord', !!demo && /sauvegarde/.test(demo[0]));
     // Sur un carnet vide il n'y a rien à perdre : demander serait un obstacle
     // posé devant la seule bonne façon de découvrir l'application.
@@ -1062,8 +1066,95 @@ groupe('Sauvegarder et restaurer');
     vrai('★ il n\'apparaît que si un carnet est trouvé',
       /Store\.ancienCarnet\(\)[\s\S]{0,200}?#btn-recover'\)\.hidden = false/.test(app));
     const rec = app.match(/#btn-recover'\)\.addEventListener[\s\S]*?\n\}\);/);
-    vrai('★ récupérer demande confirmation', !!rec && /confirm\(/.test(rec[0]));
+    vrai('★ récupérer demande confirmation', !!rec && /await demander\(/.test(rec[0]));
   }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   9 bis. Les questions en français
+   ───────────────────────────────────────────────────────────
+   Les questions les plus dangereuses de l'application passaient par
+   le confirm() du navigateur, qui écrit ses deux boutons CANCEL / OK
+   EN ANGLAIS dans l'application Android — sans aucun moyen de les
+   traduire. Pour une appli entièrement en français, c'est un défaut
+   visible, et il tombe précisément là où il faut comprendre avant
+   d'appuyer. Trouvé le 16 août 2026, corrigé le 17.
+   ═══════════════════════════════════════════════════════════ */
+groupe('Les questions en français');
+{
+  const app  = lire('app.js');
+  const html = lire('index.html');
+  const css  = lire('styles.css');
+
+  // Le code seul : les commentaires, eux, ont le droit (et le devoir) de
+  // parler de confirm() pour que le piège ne soit pas rouvert un jour.
+  const sansCommentaires = txt => txt
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  const code = sansCommentaires(app);
+
+  // ★ Le cœur du groupe : plus une seule fenêtre du système, nulle part.
+  faux('★ plus aucun confirm() du navigateur', /\bconfirm\(/.test(code));
+  faux('★ plus aucun alert() du navigateur',   /\balert\(/.test(code));
+
+  // La fenêtre maison, et ses deux boutons écrits en toutes lettres.
+  vrai('la question existe dans la page',   /id="ask"/.test(html));
+  vrai('★ elle part cachée',                /id="ask"[\s\S]{0,300}?hidden>/.test(html));
+  vrai('elle a un fond qui l\'isole',       /id="ask-backdrop"/.test(html));
+  vrai('★ le bouton d\'annulation est en français',
+    /id="ask-no"[^>]*>Annuler</.test(html));
+  vrai('★ le bouton d\'action est en français',
+    /id="ask-yes"[^>]*>Continuer</.test(html));
+  vrai('elle se présente comme une question au lecteur d\'écran',
+    /id="ask"[\s\S]{0,200}?role="alertdialog"/.test(html));
+  vrai('la fenêtre a son habillage', /^\.ask \{/m.test(css));
+
+  // Les deux fonctions, et ce qu'elles promettent.
+  vrai('★ « demander » rend une promesse',
+    /function poserQuestion[\s\S]*?return new Promise\(resoudre/.test(app));
+  vrai('« demander » propose deux issues',
+    /function demander\([\s\S]{0,200}?annuler: 'Annuler'/.test(app));
+  vrai('« prévenir » n\'en propose qu\'une',
+    /function prevenir\([\s\S]{0,200}?annuler: ''/.test(app));
+
+  // ★ Le retournement à ne jamais laisser passer : une question qu'on
+  //   ferme sans répondre doit valoir NON. Si elle valait oui, fermer la
+  //   fenêtre par mégarde effacerait le carnet.
+  vrai('★ appuyer à côté vaut « non »',
+    /#ask-backdrop'\)\.addEventListener\('click', \(\) => fermerQuestion\(false\)\)/.test(app));
+  vrai('★ Échap vaut « non »',
+    /questionOuverte\)\s*\{ fermerQuestion\(false\); return; \}/.test(app));
+  // On isole la fonction : ailleurs dans le fichier, « #welcome-1 » ferait
+  // croire à un bon ordre alors que la question serait passée en dernier.
+  const retour = app.match(/function retourEnArriere\(\)[\s\S]*?\n\}/);
+  vrai('la marche arrière d\'Android est trouvée', !!retour);
+  vrai('★ le bouton Retour d\'Android vaut « non »',
+    !!retour && /questionOuverte\)\s*\{ fermerQuestion\(false\); return true; \}/.test(retour[0]));
+  vrai('★ et la question passe AVANT tout le reste',
+    !!retour && retour[0].indexOf('questionOuverte') < retour[0].indexOf('#welcome'));
+
+  // Le doigt se pose sur la sortie : une question dangereuse ne doit pas
+  // pouvoir se valider par un appui distrait sur Entrée.
+  vrai('★ le focus va sur « Annuler », pas sur l\'action',
+    /\(annuler \? non : oui\)\.focus\(\)/.test(app));
+  // Constaté dans le navigateur le 17 août : sans clic préalable, le focus
+  // restait sur un bouton devenu invisible — un lecteur d'écran annonçait
+  // alors un bouton qui n'était plus là.
+  vrai('★ et il ne reste jamais sur un bouton devenu invisible',
+    /function fermerQuestion[\s\S]*?contains\(document\.activeElement\)\) document\.activeElement\.blur\(\)/.test(app));
+
+  // Le nom d'une intention ne doit jamais pouvoir devenir une balise.
+  vrai('★ le texte de la question est écrit comme du texte, jamais du HTML',
+    /function poserQuestion[\s\S]*?p\.textContent = bout/.test(app));
+  faux('★ et jamais par innerHTML',
+    /function poserQuestion[\s\S]*?innerHTML/.test(app.match(/function poserQuestion[\s\S]*?\n\}/)?.[0] || ''));
+
+  // ★ aller('nom-inconnu') laissait l'application ENTIÈREMENT BLANCHE :
+  //   tous les écrans cachés, aucun onglet allumé. C'est ce qui avait
+  //   faussé un test le 16 août (on visait `progress`, qui n'existe pas).
+  vrai('★ un écran inconnu ne blanchit plus l\'application',
+    /function aller\(nom\)[\s\S]{0,400}?if \(!document\.getElementById\('screen-' \+ nom\)\) return;/.test(app));
 }
 
 

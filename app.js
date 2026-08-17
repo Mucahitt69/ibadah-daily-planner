@@ -46,6 +46,13 @@ function appliquerTheme(sombre) {
 
 /* ─── Navigation entre écrans ───────────────────────────── */
 function aller(nom) {
+  // ⚠️ Un nom d'écran inconnu laissait l'application ENTIÈREMENT
+  // BLANCHE : tous les écrans cachés, aucun onglet allumé, et plus
+  // rien à quoi se raccrocher. Mieux vaut ne rien faire du tout.
+  // (getElementById, et non $, pour qu'un nom biscornu ne fasse pas
+  //  échouer la recherche elle-même.)
+  if (!document.getElementById('screen-' + nom)) return;
+
   $$('.screen').forEach(s => {
     const actif = s.id === 'screen-' + nom;
     s.classList.toggle('is-active', actif);
@@ -55,6 +62,82 @@ function aller(nom) {
   const zone = $('#screen-' + nom + ' .scroll');
   if (zone) zone.scrollTop = 0;
   if (nom === 'stats') afficherStats();
+}
+
+/* ─── Les questions de l'application ─────────────────────
+   Le confirm() du navigateur écrit ses deux boutons CANCEL / OK
+   EN ANGLAIS dans l'application Android, et rien ne permet de les
+   traduire. Or ce sont les mots qu'on lit juste avant d'effacer son
+   carnet : ils doivent être en français, et dire ce qu'ils font
+   (« Tout effacer », pas « OK »). On refait donc la fenêtre.
+
+   Elle rend une promesse — `if (await demander({...}))` — ce qui
+   oblige les endroits concernés à devenir `async`. */
+let questionOuverte = null;
+
+function fermerQuestion(reponse) {
+  if (!questionOuverte) return;
+  const { resoudre, focusDAvant } = questionOuverte;
+  questionOuverte = null;
+  $('#ask-backdrop').hidden = true;
+  $('#ask').hidden = true;
+  // Rendre le doigt là où il était : sinon un lecteur d'écran repart
+  // du haut de la page, et on ne sait plus où on en était.
+  if (focusDAvant && focusDAvant.isConnected && focusDAvant.focus) {
+    try { focusDAvant.focus(); } catch (e) {}
+  }
+  // ⚠️ Et s'il n'y avait rien avant (question ouverte sans clic), le focus
+  // resterait sur un bouton devenu invisible : un lecteur d'écran
+  // annoncerait un bouton qui n'est plus là. On le relâche.
+  if ($('#ask').contains(document.activeElement)) document.activeElement.blur();
+  resoudre(reponse);
+}
+
+function poserQuestion({ titre, texte, ok, annuler, danger }) {
+  // Deux questions à la fois n'arrivent pas. Si ça arrivait, la
+  // précédente vaut « non » — jamais « oui » par accident.
+  if (questionOuverte) fermerQuestion(false);
+
+  $('#ask-title').textContent = titre;
+
+  // Le texte arrive en paragraphes séparés par une ligne vide. On
+  // écrit du TEXTE, jamais du HTML : rien de ce qui vient du carnet
+  // (un nom d'intention, par exemple) ne doit devenir une balise.
+  const zone = $('#ask-text');
+  zone.textContent = '';
+  String(texte).split('\n\n').forEach(bout => {
+    const p = document.createElement('p');
+    p.textContent = bout;
+    zone.appendChild(p);
+  });
+
+  const non = $('#ask-no');
+  const oui = $('#ask-yes');
+  non.hidden = !annuler;
+  if (annuler) non.textContent = annuler;
+  oui.textContent = ok;
+  oui.className = 'btn ' + (danger ? 'btn--soft' : 'btn--primary');
+  $('#ask').classList.toggle('ask--seul', !annuler);
+
+  $('#ask-backdrop').hidden = false;
+  $('#ask').hidden = false;
+
+  return new Promise(resoudre => {
+    questionOuverte = { resoudre, focusDAvant: document.activeElement };
+    // Le doigt se pose sur la sortie, pas sur l'action : une question
+    // dangereuse ne doit pas se valider par un appui distrait sur Entrée.
+    (annuler ? non : oui).focus();
+  });
+}
+
+/* Demander avant l'irréparable. Rend vrai ou faux. */
+function demander(options) {
+  return poserQuestion({ ok: 'Continuer', annuler: 'Annuler', danger: true, ...options });
+}
+
+/* Simplement prévenir : un seul bouton, rien à décider. */
+function prevenir(options) {
+  return poserQuestion({ ok: 'J\'ai compris', annuler: '', danger: false, ...options });
 }
 
 /* ─── Petit message de félicitation ─────────────────────── */
@@ -990,13 +1073,32 @@ $('#lecture-backdrop').addEventListener('click', fermerLecture);
 $('#lecture-close').addEventListener('click', fermerLecture);
 $('#biblio-back').addEventListener('click', fermerBiblio);
 
+$('#ask-yes').addEventListener('click', () => fermerQuestion(true));
+$('#ask-no').addEventListener('click', () => fermerQuestion(false));
+// Appuyer à côté, c'est renoncer — jamais accepter.
+$('#ask-backdrop').addEventListener('click', () => fermerQuestion(false));
+
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  // La question est par-dessus tout le reste : elle se ferme d'abord.
+  if (questionOuverte)              { fermerQuestion(false); return; }
   if (!$('#perso-sheet').hidden)     fermerPerso();
   else if (!$('#lecture').hidden)    fermerLecture();
   else if (!$('#biblio').hidden)     fermerBiblio();
   else if (!$('#menu-sheet').hidden) fermerMenu();
   else if (!$('#sheet').hidden)      fermerFeuille();
+});
+
+/* La question est modale : la tabulation ne doit pas passer derrière
+   elle, sinon on peut atteindre « Tout effacer » à travers. */
+document.addEventListener('keydown', e => {
+  if (!questionOuverte || e.key !== 'Tab') return;
+  const boutons = [$('#ask-no'), $('#ask-yes')].filter(b => !b.hidden);
+  const ici = boutons.indexOf(document.activeElement);
+  const pas = e.shiftKey ? -1 : 1;
+  const suivant = ((ici < 0 ? 0 : ici + pas) + boutons.length) % boutons.length;
+  e.preventDefault();
+  boutons[suivant].focus();
 });
 
 $$('#f-freq .chip').forEach(c =>
@@ -1256,24 +1358,36 @@ $('#import-file').addEventListener('change', async e => {
   try {
     contenu = JSON.parse(await fichier.text());
   } catch (err) {
-    alert('Ce fichier ne peut pas être lu. Choisis un fichier de sauvegarde Ibadah.');
+    await prevenir({
+      titre: 'Ce fichier ne peut pas être lu',
+      texte: 'Choisis un fichier de sauvegarde Ibadah — son nom commence par « ibadah-sauvegarde ».'
+    });
     return;
   }
 
   // On regarde d'abord, sans rien remplacer.
   const apercu = Store.importer(contenu, { verifierSeulement: true });
-  if (!apercu.ok) { alert(apercu.raison); return; }
+  if (!apercu.ok) {
+    await prevenir({ titre: 'Cette sauvegarde est inutilisable', texte: apercu.raison });
+    return;
+  }
 
   const actuel = Store.exporter().resume;
-  const ok = confirm(
-    `Cette sauvegarde contient ${phraseResume(apercu.resume)}.\n\n` +
-    `Elle va REMPLACER ce qui est sur cet appareil ` +
-    `(${phraseResume(actuel)}), sans possibilité de revenir en arrière.\n\n` +
-    `Continuer ?`);
+  const ok = await demander({
+    titre: 'Remplacer ton carnet ?',
+    texte:
+      `Cette sauvegarde contient ${phraseResume(apercu.resume)}.\n\n` +
+      `Elle va remplacer ce qui est sur cet appareil ` +
+      `(${phraseResume(actuel)}), sans possibilité de revenir en arrière.`,
+    ok: 'Remplacer'
+  });
   if (!ok) return;
 
   const verdict = Store.importer(contenu);
-  if (!verdict.ok) { alert(verdict.raison); return; }
+  if (!verdict.ok) {
+    await prevenir({ titre: 'La restauration n\'a pas abouti', texte: verdict.raison });
+    return;
+  }
 
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();
@@ -1294,20 +1408,32 @@ $('#import-file').addEventListener('change', async e => {
   $('#btn-recover').hidden = false;
 })();
 
-$('#btn-recover').addEventListener('click', () => {
+$('#btn-recover').addEventListener('click', async () => {
   const trouve = Store.ancienCarnet();
-  if (!trouve) { alert('Ce carnet n\'est plus disponible.'); return; }
+  if (!trouve) {
+    await prevenir({
+      titre: 'Ce carnet n\'est plus disponible',
+      texte: 'Il n\'a pas été retrouvé sur cet appareil.'
+    });
+    return;
+  }
 
   const actuel = Store.exporter().resume;
-  const ok = confirm(
-    `Un carnet d'une version précédente a été retrouvé : ${phraseResume(trouve.resume)}.\n\n` +
-    `Le récupérer REMPLACERA ce qui est sur cet appareil ` +
-    `(${phraseResume(actuel)}).\n\n` +
-    `Continuer ?`);
+  const ok = await demander({
+    titre: 'Récupérer l\'ancien carnet ?',
+    texte:
+      `Un carnet d'une version précédente a été retrouvé : ${phraseResume(trouve.resume)}.\n\n` +
+      `Le récupérer remplacera ce qui est sur cet appareil ` +
+      `(${phraseResume(actuel)}).`,
+    ok: 'Récupérer'
+  });
   if (!ok) return;
 
   const verdict = Store.restaurerAncienCarnet();
-  if (!verdict.ok) { alert(verdict.raison); return; }
+  if (!verdict.ok) {
+    await prevenir({ titre: 'La récupération n\'a pas abouti', texte: verdict.raison });
+    return;
+  }
 
   appliquerTheme(Store.reglages().sombre);
   depliees.clear();
@@ -1317,7 +1443,7 @@ $('#btn-recover').addEventListener('click', () => {
   toast(`Ancien carnet récupéré — ${phraseResume(verdict.resume)} 🤍`);
 });
 
-$('#btn-demo').addEventListener('click', () => {
+$('#btn-demo').addEventListener('click', async () => {
   // ⚠️ Ce bouton ne complète pas le carnet : il le REMPLACE
   // (`store.js`, chargerDemo → `etat = vide()`). Il détruisait donc autant
   // que « Tout effacer », qui est juste en dessous et qu'on avait pris soin
@@ -1326,11 +1452,14 @@ $('#btn-demo').addEventListener('click', () => {
   // charger l'exemple est justement la bonne façon de découvrir l'appli.
   const r = Store.exporter().resume;
   if (r.intentions || r.joursNotes) {
-    const ok = confirm(
-      `Les données d'exemple REMPLACENT ton carnet : ${phraseResume(r)} ` +
-      `seront perdues.\n\n` +
-      `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.\n\n` +
-      `Charger quand même les données d'exemple ?`);
+    const ok = await demander({
+      titre: 'Charger les données d\'exemple ?',
+      texte:
+        `Les données d'exemple remplacent ton carnet : ${phraseResume(r)} ` +
+        `seront perdues.\n\n` +
+        `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.`,
+      ok: 'Charger l\'exemple'
+    });
     if (!ok) return;
   }
 
@@ -1343,14 +1472,17 @@ $('#btn-demo').addEventListener('click', () => {
   toast('Données d\'exemple chargées ↺');
 });
 
-$('#btn-clear').addEventListener('click', () => {
+$('#btn-clear').addEventListener('click', async () => {
   // Un seul appui effaçait tout, sans rien demander — y compris par
   // erreur, le bouton étant juste sous « Charger des données d'exemple ».
   const r = Store.exporter().resume;
-  const ok = confirm(
-    `Tout effacer supprimera ${phraseResume(r)}, définitivement.\n\n` +
-    `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.\n\n` +
-    `Vraiment tout effacer ?`);
+  const ok = await demander({
+    titre: 'Vraiment tout effacer ?',
+    texte:
+      `Tout effacer supprimera ${phraseResume(r)}, définitivement.\n\n` +
+      `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.`,
+    ok: 'Tout effacer'
+  });
   if (!ok) return;
 
   Store.repartirDeZero();
@@ -1521,9 +1653,12 @@ async function annoncerLeCheminUneFois(Fs, Rangement) {
     await Rangement.set({ key: CLE_CHEMIN_VU, value: '1' });
     const lisible = String(uri).replace(/^file:\/\//, '');
     setTimeout(() => {
-      alert('Ibadah range désormais une sauvegarde par jour dans :\n\n' + lisible +
-            '\n\nCes fichiers restent sur le téléphone même si tu désinstalles ' +
-            'l\'application. Les 7 derniers jours sont gardés.');
+      prevenir({
+        titre: 'Une copie chaque jour',
+        texte: 'Ibadah range désormais une sauvegarde par jour dans :\n\n' + lisible +
+               '\n\nCes fichiers restent sur le téléphone même si tu désinstalles ' +
+               'l\'application. Les 7 derniers jours sont gardés.'
+      });
     }, 2200);
   } catch (e) { /* tant pis pour l'annonce */ }
 }
@@ -1623,6 +1758,9 @@ $('#btn-contact').addEventListener('click', () => {
    On reprend exactement l'ordre déjà écrit pour la touche Échap,
    et on ajoute ce qu'Android attend en plus. */
 function retourEnArriere() {
+  // La question est par-dessus tout : Retour vaut « Annuler ».
+  if (questionOuverte)           { fermerQuestion(false); return true; }
+
   // L'écran de bienvenue ne se referme pas par un appui distrait.
   if (!$('#welcome').hidden)     return true;
 

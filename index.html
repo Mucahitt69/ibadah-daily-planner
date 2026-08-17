@@ -516,6 +516,22 @@
       </form>
     </div>
 
+    <!-- ══════════════ LA QUESTION ══════════════
+         Elle remplace le confirm() du navigateur, dont les deux boutons
+         s'écrivent CANCEL / OK en anglais dans l'application, sans aucun
+         moyen de les traduire. C'est le mot qu'on lit juste avant
+         d'effacer son carnet : il doit être en français. -->
+    <div class="ask-backdrop" id="ask-backdrop" hidden></div>
+    <div class="ask" id="ask" role="alertdialog" aria-modal="true"
+         aria-labelledby="ask-title" aria-describedby="ask-text" hidden>
+      <h2 class="ask__title" id="ask-title"></h2>
+      <div class="ask__text" id="ask-text"></div>
+      <div class="ask__actions">
+        <button type="button" class="btn btn--ghost" id="ask-no">Annuler</button>
+        <button type="button" class="btn btn--soft" id="ask-yes">Continuer</button>
+      </div>
+    </div>
+
     <!-- ══════════════ PANNEAU : BIBLIOTHÈQUE DE DHIKR ══════════════ -->
     <div class="biblio" id="biblio" role="dialog" aria-modal="true" aria-labelledby="biblio-title" hidden>
       <header class="topbar topbar--back">
