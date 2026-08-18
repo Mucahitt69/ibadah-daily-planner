@@ -1827,6 +1827,37 @@ function brancherClavier() {
   Clavier.addListener('keyboardWillHide', () => document.body.classList.remove('clavier-ouvert'));
 }
 
+/* ─── Le clavier ne cache plus ce qu'on écrit ────────────────
+   Les feuilles sont collées au bas de l'écran. Sur Android 15 et plus,
+   la page ne rétrécit pas quand le clavier monte : il passe PAR-DESSUS.
+   La feuille « écrire mon propre dhikr » est courte : elle disparaît
+   donc en entier derrière le clavier, et on tape à l'aveugle. Celle de
+   la nouvelle intention est plus haute, seul son bas se perdait —
+   c'est pour ça qu'on ne l'avait pas vu venir.
+
+   Aucun test ne pouvait l'attraper : il n'y a pas de clavier tactile
+   dans un navigateur d'ordinateur.
+
+   On mesure ce que le clavier recouvre, et --clavier soulève la
+   feuille d'autant (styles.css). La mesure se corrige toute seule : si
+   le navigateur rétrécit vraiment la page (« resizes-content » dans
+   index.html, ou un Android plus ancien), innerHeight rétrécit avec
+   elle, la différence tombe à zéro, et rien n'est soulevé deux fois.
+   Vaut aussi pour le site : ce n'est pas réservé au natif. */
+function suivreLeClavier() {
+  const vue = window.visualViewport;
+  if (!vue) return;
+  const mesurer = () => {
+    const cache = window.innerHeight - vue.height - vue.offsetTop;
+    // Sous 80 px c'est un arrondi ou une barre d'adresse, pas un clavier.
+    document.documentElement.style.setProperty(
+      '--clavier', (cache > 80 ? Math.round(cache) : 0) + 'px');
+  };
+  vue.addEventListener('resize', mesurer);
+  vue.addEventListener('scroll', mesurer);
+  mesurer();
+}
+
 /* ─── Le retour après une nuit ──────────────────────────────
    L'application garde le jour trouvé à son ouverture (JOUR). Laissée
    ouverte toute la nuit, elle affiche encore hier au réveil : les
@@ -2013,6 +2044,7 @@ function toutAfficher() {
 }
 
 appliquerTheme(Store.reglages().sombre);
+suivreLeClavier();
 toutAfficher();
 chargerHadith(false);
 

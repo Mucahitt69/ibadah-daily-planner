@@ -5,6 +5,7 @@
 
 :root {
   --bg:          #F4F1EA;
+  --clavier:     0px;   /* hauteur cachée par le clavier — voir suivreLeClavier() */
   --surface:     #FFFFFF;
   --surface-2:   #FAF8F3;
   --line:        #E4DFD4;
@@ -660,15 +661,32 @@ body.clavier-ouvert .tabbar { display: none; }
   background: rgba(10,20,16,.45); backdrop-filter: blur(2px);
   animation: fade .2s ease;
 }
+/* ★ « bottom » n'est pas 0 mais la hauteur du clavier. Collée à 0, la
+   feuille se retrouve ENTIÈREMENT derrière le clavier sur Android 15+,
+   et on écrit sans voir ce qu'on tape. --clavier vaut 0 tant qu'aucun
+   clavier n'est ouvert, donc rien ne change le reste du temps. */
 .sheet {
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 21;
+  position: absolute; left: 0; right: 0; bottom: var(--clavier); z-index: 21;
   background: var(--surface); border-radius: 26px 26px 0 0;
   padding: 10px 20px calc(22px + env(safe-area-inset-bottom));
   box-shadow: 0 -10px 40px rgba(0,0,0,.2);
   animation: slideUp .32s cubic-bezier(.22,1,.36,1);
-  max-height: 92%; overflow-y: auto;
+  transition: bottom .18s ease;
+  max-height: calc(92% - var(--clavier)); overflow-y: auto;
 }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+
+/* ★ « Écrire mon propre dhikr » s'ouvre DEPUIS la bibliothèque, et c'est la
+   seule feuille dans ce cas. À l'étage 21 elle passait derrière le panneau
+   (étage 30, plein écran, fond opaque) : la feuille existait, le curseur
+   était dedans, le clavier montait — et on ne voyait rien. On tapait à
+   l'aveugle dans un champ invisible.
+   On la monte au-dessus du panneau, mais sous l'écran de bienvenue (40) et
+   sous la question (50/51), qui doit rester la dernière chose lisible.
+   ⚠️ Ne PAS monter « .sheet » en entier : le toast est à l'étage 30, il
+   passerait derrière toutes les autres feuilles. */
+#perso-backdrop { z-index: 31; }
+#perso-sheet    { z-index: 32; }
 .sheet__grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 14px; }
 .sheet__title { margin: 0 0 18px; font-size: 21px; }
 

@@ -1222,6 +1222,29 @@ groupe('Les pièges déjà rencontrés');
   vrai('la hauteur des lignes reste identique',
     /\.row\s*\{[^}]*border-top:\s*1px solid transparent/.test(css));
 
+  // ★ Vu sur le vrai téléphone le 18 août 2026, en photo. « Écrire mon propre
+  //   dhikr » s'ouvre DEPUIS la bibliothèque. La feuille était à l'étage 21,
+  //   le panneau de la bibliothèque à l'étage 30, plein écran et fond opaque :
+  //   la feuille s'ouvrait DERRIÈRE lui. Le curseur entrait dans le champ, le
+  //   clavier montait, et on tapait à l'aveugle dans une fenêtre invisible.
+  //   Rien à voir avec le clavier, contrairement à ce qu'on avait cru.
+  const etage = (sel) => {
+    const m = new RegExp('\\' + sel + '\\s*\\{[^}]*z-index:\\s*(\\d+)').exec(css);
+    return m ? Number(m[1]) : null;
+  };
+  vrai('★ la feuille du dhikr perso passe DEVANT la bibliothèque',
+    etage('#perso-sheet') > etage('.biblio'));
+  vrai('et son voile aussi',
+    etage('#perso-backdrop') > etage('.biblio'));
+  // ⚠️ Elle ne doit pas monter trop haut non plus : la question qu'on lit
+  //   avant d'effacer son carnet reste la dernière chose visible.
+  vrai('★ mais elle reste sous la question',
+    etage('#perso-sheet') < etage('.ask'));
+  // ⚠️ Monter « .sheet » en entier ferait passer le toast (étage 30)
+  //   derrière toutes les feuilles. Seule celle-ci bouge.
+  vrai('★ les autres feuilles n\'ont pas bougé, le toast reste visible',
+    etage('.sheet') < etage('.toast'));
+
   // Tous les fichiers chargés par la page doivent exister,
   // être publiés, être estampillés et être gardés hors-ligne.
   const charges = [
@@ -1610,6 +1633,7 @@ groupe('Le passage en application');
 {
   const app       = lire('app.js');
   const css       = lire('styles.css');
+  const html      = lire('index.html');
   const manifeste = lire('android/app/src/main/AndroidManifest.xml');
   const d         = JSON.parse(lire('package.json')).dependencies || {};
 
@@ -1653,6 +1677,32 @@ groupe('Le passage en application');
   vrai('★ la barre d\'onglets s\'efface quand le clavier monte',
     /keyboardWillShow/.test(app) &&
     /body\.clavier-ouvert \.tabbar\s*\{\s*display:\s*none/.test(css));
+
+  /* ─── La feuille cachée par le clavier ─── */
+  // ★ Trouvé le 18 août 2026 par Mucahid, le doigt sur l'écran, la veille de
+  //   l'envoi. Les feuilles sont en « bottom: 0 » ; sur Android 15+ le clavier
+  //   passe PAR-DESSUS la page au lieu de la rétrécir. La feuille « écrire mon
+  //   propre dhikr » est courte : elle disparaissait en entier, et on tapait
+  //   sans rien voir. 398 vérifications vertes n'y pouvaient rien — il n'y a
+  //   pas de clavier tactile dans un navigateur d'ordinateur.
+  vrai('★ la feuille se pose SUR le clavier, pas dessous',
+    /\.sheet\s*\{[\s\S]{0,260}?bottom:\s*var\(--clavier\)/.test(css));
+  vrai('★ et elle ne déborde pas par le haut pour autant',
+    /\.sheet\s*\{[\s\S]{0,400}?max-height:\s*calc\(92% - var\(--clavier\)\)/.test(css));
+  vrai('--clavier vaut 0 tant qu\'aucun clavier n\'est ouvert',
+    /--clavier:\s*0px/.test(css));
+  vrai('★ la hauteur cachée est mesurée, pas devinée',
+    /visualViewport/.test(app) &&
+    /innerHeight - vue\.height - vue\.offsetTop/.test(app) &&
+    /setProperty\(\s*\n?\s*'--clavier'/.test(app));
+  // ★ Appelée avec appliquerTheme, PAS dans seMettreAuFormatAppli() : celle-ci
+  //   sort tout de suite hors application, et le site aurait gardé le bug.
+  vrai('★ la mesure vaut aussi pour le site, pas seulement l\'application',
+    /appliquerTheme\([\s\S]{0,40}?suivreLeClavier\(\);/.test(app));
+  // ★ Le navigateur sait faire le travail seul depuis Chrome 108 ; la mesure
+  //   ci-dessus n'est que le filet pour les autres.
+  vrai('★ le navigateur est prié de rétrécir la page de lui-même',
+    /content="[^"]*interactive-widget=resizes-content/.test(html));
 
   /* ─── L'orientation ─── */
   // ★ Capacitor IGNORE l'orientation du manifest.webmanifest : elle ne
