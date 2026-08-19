@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ibadah">
-  <link rel="stylesheet" href="styles.css?v=f8876eef">
+  <link rel="stylesheet" href="styles.css?v=2947f859">
 </head>
 <body>
 
@@ -202,7 +202,11 @@
           </div>
           <div id="hadith-content" hidden>
             <span class="quote-mark" aria-hidden="true">❝</span>
-            <p class="hadith__text" id="hadith-text"></p>
+            <p class="hadith__text is-replie" id="hadith-text"></p>
+            <!-- N'apparaît que si le texte déborde vraiment de la carte.
+                 C'est app.js qui le décide, en mesurant. -->
+            <button type="button" class="hadith__plus" id="hadith-plus"
+                    aria-controls="hadith-text" aria-expanded="false" hidden>Voir plus</button>
             <p class="hadith__source" id="hadith-source"></p>
             <div class="hadith__note" id="hadith-note"></div>
           </div>
@@ -612,10 +616,10 @@
 
   </div>
 
-  <script src="store.js?v=f8876eef"></script>
-  <script src="adhkar.js?v=f8876eef"></script>
-  <script src="feuille.js?v=f8876eef"></script>
-  <script src="app.js?v=f8876eef"></script>
-  <script src="rappels.js?v=f8876eef"></script>
+  <script src="store.js?v=2947f859"></script>
+  <script src="adhkar.js?v=2947f859"></script>
+  <script src="feuille.js?v=2947f859"></script>
+  <script src="app.js?v=2947f859"></script>
+  <script src="rappels.js?v=2947f859"></script>
 </body>
 </html>

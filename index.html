@@ -202,7 +202,11 @@
           </div>
           <div id="hadith-content" hidden>
             <span class="quote-mark" aria-hidden="true">❝</span>
-            <p class="hadith__text" id="hadith-text"></p>
+            <p class="hadith__text is-replie" id="hadith-text"></p>
+            <!-- N'apparaît que si le texte déborde vraiment de la carte.
+                 C'est app.js qui le décide, en mesurant. -->
+            <button type="button" class="hadith__plus" id="hadith-plus"
+                    aria-controls="hadith-text" aria-expanded="false" hidden>Voir plus</button>
             <p class="hadith__source" id="hadith-source"></p>
             <div class="hadith__note" id="hadith-note"></div>
           </div>

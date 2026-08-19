@@ -62,6 +62,9 @@ function aller(nom) {
   const zone = $('#screen-' + nom + ' .scroll');
   if (zone) zone.scrollTop = 0;
   if (nom === 'stats') afficherStats();
+  // L'écran vient seulement d'apparaître : c'est le premier instant où
+  // l'on peut mesurer si le hadith déborde. Voir replierLeHadith().
+  if (nom === 'hadith') replierLeHadith(false);
 }
 
 /* ─── Les questions de l'application ─────────────────────
@@ -695,15 +698,26 @@ function numeroDuJour() {
   return Math.floor(Store.dateDepuisCle(JOUR).getTime() / 86400000);
 }
 
-/* Petit cache : on ne rappelle internet qu'une fois par hadith. */
+/* Petit cache : on ne rappelle internet qu'une fois par hadith.
+
+   ⚠️ Le numéro de version n'est pas décoratif. Le cache garde le texte
+   DÉJÀ mis en forme : le jour où l'on change cette mise en forme — le
+   19 août 2026, on a cessé de couper les longs hadiths à 900 signes —
+   le texte déjà rangé resterait à l'ancienne forme jusqu'au lendemain.
+   Changer ce numéro jette les vieilles copies. */
+const VERSION_CACHE_HADITH = 2;
+
 function lireCache(cle) {
   try {
     const c = JSON.parse(localStorage.getItem('ibadah-hadith') || '{}');
-    return c.cle === cle ? c.valeur : null;
+    return (c.v === VERSION_CACHE_HADITH && c.cle === cle) ? c.valeur : null;
   } catch (e) { return null; }
 }
 function ecrireCache(cle, valeur) {
-  try { localStorage.setItem('ibadah-hadith', JSON.stringify({ cle, valeur })); } catch (e) {}
+  try {
+    localStorage.setItem('ibadah-hadith',
+      JSON.stringify({ v: VERSION_CACHE_HADITH, cle, valeur }));
+  } catch (e) {}
 }
 
 async function chargerHadith(auHasard = false) {
@@ -736,7 +750,15 @@ async function chargerHadith(auHasard = false) {
       const h = data.hadiths && data.hadiths[0];
       let txt = h && String(h.text || '').replace(/\s+/g, ' ').trim();
       if (!txt || txt.length < 40) continue;
-      if (txt.length > 900) txt = txt.slice(0, 900).replace(/\S+$/, '').trim() + '…';
+      /* ⚠️ Ici, le texte était COUPÉ à 900 signes, en silence : les longs
+         hadiths s'arrêtaient au milieu d'une phrase, et rien ne permettait
+         de lire la suite. Vu sur le vrai téléphone le 19 août 2026. Le
+         texte est désormais gardé ENTIER — c'est l'affichage qui le replie
+         sous un bouton « Voir plus », et ça se déplie d'un doigt.
+         La garde ci-dessous n'est plus une coupe : aucun hadith de
+         an-Nawawi n'en approche. Elle n'existe que pour le jour où la
+         source renverrait un chapitre entier par erreur. */
+      if (txt.length > 6000) txt = txt.slice(0, 6000).replace(/\S+$/, '').trim() + '…';
 
       const item = { text: txt, source: `${c.titre} — n° ${h.hadithnumber}`, note: '', enLigne: true };
       ecrireCache(c.edition + '/' + n, item);
@@ -764,6 +786,42 @@ function montrerHadith(h) {
   $('#hadith-note').innerHTML = note;
   $('#hadith-loading').hidden = true;
   $('#hadith-content').hidden = false;
+
+  // Un nouveau hadith revient toujours replié : sinon le suivant
+  // s'ouvrirait déplié parce qu'on avait déplié le précédent.
+  replierLeHadith(true);
+}
+
+/* ─── « Voir plus » ─────────────────────────────────────────
+   Un hadith long tenait autrefois dans la carte parce qu'on le
+   coupait. Maintenant qu'il arrive entier, il faut bien le ranger : on
+   le replie sur neuf lignes, et le bouton le rend en entier.
+
+   ⚠️ On ne DEVINE pas si le texte déborde à partir de sa longueur en
+   caractères : la police du système peut être réglée en grand, et le
+   même texte tient sur six lignes chez l'un et sur douze chez l'autre.
+   On mesure donc. Mais on ne peut mesurer que ce qui est à l'écran :
+   tant que l'onglet Hadith est caché, tout mesure zéro. D'où l'appel
+   depuis aller('hadith') — la question est reposée à l'ouverture. */
+function replierLeHadith(remettreAZero) {
+  const texte  = $('#hadith-text');
+  const bouton = $('#hadith-plus');
+  if (!texte || !bouton) return;
+
+  if (remettreAZero) texte.classList.add('is-replie');
+
+  // Écran caché : rien à mesurer, on ne décide rien maintenant.
+  if (!texte.clientHeight) return;
+
+  const replie = texte.classList.contains('is-replie');
+  // Déplié, plus rien ne permet de savoir s'il débordait : c'est le
+  // bouton lui-même, resté visible, qui garde la réponse.
+  const deborde = replie ? (texte.scrollHeight > texte.clientHeight + 2)
+                         : !bouton.hidden;
+
+  bouton.hidden = !deborde;
+  bouton.textContent = replie ? 'Voir plus' : 'Voir moins';
+  bouton.setAttribute('aria-expanded', replie ? 'false' : 'true');
 }
 
 const INFOS = [
@@ -1291,27 +1349,92 @@ function texteDeSauvegarde() {
   return JSON.stringify(Store.exporter(), null, 2);
 }
 
-/* ⚠️ Dans l'application, ce bouton NE FAISAIT RIEN, en silence.
-   Un lien « download » a besoin du gestionnaire de téléchargement du
-   navigateur — une application n'en a pas. On écrit donc le fichier
-   nous-mêmes, puis on laisse choisir où l'envoyer : Drive, Fichiers,
-   un message à soi-même… C'est plus pratique qu'avant. */
-async function sauvegarderDansLAppli() {
-  const Fs    = greffonNatif('Filesystem');
-  const Envoi = greffonNatif('Share');
-  const nom   = nomDeSauvegarde();
+/* Android donne les adresses sous la forme « file:///storage/… ».
+   Le « file:// » de tête ne veut rien dire pour personne. */
+function cheminLisible(uri) {
+  return String(uri).replace(/^file:\/\//, '');
+}
 
+/* Écrire dans Documents/Ibadah — le dossier visible du téléphone.
+   Rend l'adresse du fichier, ou null si Android a refusé. */
+async function rangerDansDocuments(Fs, chemin) {
+  try {
+    await Fs.writeFile({
+      path: chemin, data: texteDeSauvegarde(),
+      directory: 'DOCUMENTS', encoding: 'utf8', recursive: true
+    });
+    return (await Fs.getUri({ path: chemin, directory: 'DOCUMENTS' })).uri;
+  } catch (e) { return null; }
+}
+
+/* Le dossier privé de l'application : personne ne va l'y chercher,
+   mais le partage, lui, sait le lire. C'est le plan de secours. */
+async function rangerDansLeCache(Fs, nom) {
   await Fs.writeFile({
     path: nom, data: texteDeSauvegarde(),
     directory: 'CACHE', encoding: 'utf8'
   });
-  const { uri } = await Fs.getUri({ path: nom, directory: 'CACHE' });
+  return (await Fs.getUri({ path: nom, directory: 'CACHE' })).uri;
+}
 
+/* En envoyer une copie ailleurs — Drive, un message à soi-même… Ce
+   n'est plus « sauvegarder », c'est « envoyer », et ça se dit. */
+async function envoyerUneCopie(uri) {
+  const Envoi = greffonNatif('Share');
+  if (!Envoi) return;
   await Envoi.share({
     title: 'Sauvegarde Ibadah',
-    dialogTitle: 'Où ranger ta sauvegarde ?',
+    dialogTitle: 'Envoyer une copie de ta sauvegarde',
     files: [uri]
   });
+}
+
+/* ⚠️ Deux fois de suite, ce bouton a fait autre chose que ce qu'il dit.
+
+   1. Dans l'application, il NE FAISAIT RIEN, en silence : un lien
+      « download » a besoin du gestionnaire de téléchargement du
+      navigateur, et une application n'en a pas.
+   2. Corrigé, il ouvrait alors DIRECTEMENT le partage d'Android — qui
+      propose d'abord des visages et des messageries. « Sauvegarder »
+      avait donc l'air de demander à qui ENVOYER son carnet, et il
+      fallait deviner qu'on cherchait « Fichiers » au milieu des
+      contacts. Vu sur le vrai téléphone le 19 août 2026.
+
+   Maintenant le bouton range le fichier lui-même, dans Documents/Ibadah
+   — le même dossier que les copies du jour (filet nº 2) : un seul
+   endroit à retenir, et il est dit à l'écran. En envoyer une copie
+   ailleurs reste possible, mais c'est un deuxième geste, et c'est un
+   choix. */
+async function sauvegarderDansLAppli(resume) {
+  const Fs  = greffonNatif('Filesystem');
+  const nom = nomDeSauvegarde();
+  const uri = await rangerDansDocuments(Fs, `${DOSSIER_COPIES}/${nom}`);
+
+  // Documents a refusé (cela dépend de la version d'Android). Plutôt
+  // que de laisser quelqu'un sans sauvegarde, on repasse par le
+  // partage : moins clair, mais le fichier existe.
+  if (!uri) {
+    await envoyerUneCopie(await rangerDansLeCache(Fs, nom));
+    return;
+  }
+
+  // La sauvegarde du jour vient d'être réécrite : on garde la promesse
+  // des sept dernières, comme le fait la copie automatique.
+  await faireLeMenage(Fs);
+
+  const envoyer = await poserQuestion({
+    titre: 'Sauvegarde enregistrée',
+    texte: `Ton carnet — ${phraseResume(resume)} — est rangé dans :
+
+${cheminLisible(uri)}
+
+Ce fichier reste sur le téléphone même si tu désinstalles Ibadah. Tu peux aussi en envoyer une copie ailleurs : sur Drive, ou dans un message à toi-même.`,
+    ok: 'Envoyer une copie',
+    annuler: 'C’est bon',
+    danger: false
+  });
+
+  if (envoyer) await envoyerUneCopie(uri);
 }
 
 /* Sur le site, le téléchargement classique : lui, il marche. */
@@ -1334,9 +1457,15 @@ function sauvegarderSurLeSite() {
 $('#btn-export').addEventListener('click', async () => {
   const resume = Store.exporter().resume;
   try {
-    if (greffonNatif('Share')) await sauvegarderDansLAppli();
-    else                       sauvegarderSurLeSite();
-    toast(`Sauvegarde enregistrée — ${phraseResume(resume)} 🤍`);
+    // Dans l'application, c'est la fenêtre de sauvegarderDansLAppli()
+    // qui dit où le fichier est rangé : un toast par-dessus ne ferait
+    // que répéter en plus petit.
+    if (greffonNatif('Filesystem')) {
+      await sauvegarderDansLAppli(resume);
+    } else {
+      sauvegarderSurLeSite();
+      toast(`Sauvegarde enregistrée — ${phraseResume(resume)} 🤍`);
+    }
   } catch (e) {
     // Refermer la fenêtre de partage sans rien choisir passe par ici :
     // ce n'est pas une panne, on ne va pas inquiéter pour ça.
@@ -1651,7 +1780,7 @@ async function annoncerLeCheminUneFois(Fs, Rangement) {
     if ((await Rangement.get({ key: CLE_CHEMIN_VU })).value) return;
     const { uri } = await Fs.getUri({ path: DOSSIER_COPIES, directory: 'DOCUMENTS' });
     await Rangement.set({ key: CLE_CHEMIN_VU, value: '1' });
-    const lisible = String(uri).replace(/^file:\/\//, '');
+    const lisible = cheminLisible(uri);
     setTimeout(() => {
       prevenir({
         titre: 'Une copie chaque jour',
@@ -1878,6 +2007,11 @@ function surveillerLeChangementDeJour() {
    réinstallation. C'est un filet, pas une garantie. */
 
 $('#hadith-refresh').addEventListener('click', () => chargerHadith(true));
+
+$('#hadith-plus').addEventListener('click', () => {
+  $('#hadith-text').classList.toggle('is-replie');
+  replierLeHadith(false);
+});
 
 /* ─── Écran de bienvenue et packs de départ ─────────────── */
 

@@ -1290,6 +1290,47 @@ groupe('Les pièges déjà rencontrés');
   faux('ni de carte de points', /id="st-points"/.test(html));
   vrai('la régularité l\'a remplacé dans l\'en-tête', /id="hero-regularite"/.test(html));
   vrai('app.js affiche bien la régularité', /hero-regularite/.test(app));
+
+  /* ★ Vu sur le vrai téléphone le 19 août 2026, en photo : le bouton « + »
+     se posait SUR l'onglet « Réglages », qu'on n'arrivait plus à toucher.
+     Son seul repère était le bas du TÉLÉPHONE (88 pixels), alors que la
+     barre d'onglets grandit avec la police du système et avec la barre de
+     gestes d'Android : passé 88 pixels de haut, elle passait dessous.
+     Depuis, l'écran est « position: relative » : le bas de l'écran, c'est
+     le haut de la barre d'onglets, et le « + » ne peut plus la chevaucher
+     quelle que soit sa hauteur. */
+  vrai('★ l\'écran sert de plancher au bouton « + »',
+    /\.screen \{[^}]*position: relative/.test(css));
+  const basDuFab = Number((css.match(/\.fab \{[\s\S]*?bottom: (\d+)px/) || [])[1]);
+  vrai(`★ et le « + » se pose juste au-dessus de la barre (${basDuFab}px)`,
+    basDuFab > 0 && basDuFab <= 24);
+  // Le vide laissé en bas de la liste doit rester plus grand que le
+  // bouton, sinon la dernière intention se cache derrière lui.
+  const vide = Number((css.match(/\.scroll__pad \{ height: (\d+)px/) || [])[1]);
+  const hautFab = Number((css.match(/\.fab \{[\s\S]*?height: (\d+)px/) || [])[1]);
+  vrai(`★ la dernière intention reste atteignable sous le « + »`,
+    vide >= basDuFab + hautFab);
+
+  /* ★ Vu sur le vrai téléphone le 19 août 2026 : les longs hadiths
+     s'arrêtaient au milieu d'une phrase. Le texte était coupé à 900 signes
+     AVANT d'être affiché — la suite n'existait plus nulle part, aucun
+     bouton n'aurait pu la retrouver. */
+  faux('★ le hadith n\'est plus coupé à 900 signes',
+    /slice\(0, 900\)/.test(app));
+  vrai('★ il se replie sous un bouton « Voir plus » au lieu d\'être amputé',
+    html.includes('id="hadith-plus"') &&
+    /is-replie/.test(app) && /\.hadith__text\.is-replie/.test(css));
+  // ⚠️ Deviner le débordement à partir du nombre de caractères serait faux
+  //    dès que la police du système est réglée en grand : on mesure.
+  vrai('★ le repli se mesure, il ne se devine pas à la longueur du texte',
+    /scrollHeight > texte\.clientHeight/.test(app));
+  // ⚠️ Et un écran caché mesure zéro : la question doit être reposée
+  //    au moment où l'onglet Hadith s'ouvre, sinon le bouton n'apparaît
+  //    jamais au premier lancement.
+  vrai('★ la mesure est refaite quand l\'onglet Hadith s\'ouvre',
+    /nom === 'hadith'\)[\s\S]{0,40}replierLeHadith/.test(app));
+  vrai('★ le cache jette les hadiths rangés à l\'ancienne forme',
+    /VERSION_CACHE_HADITH/.test(app));
 }
 
 
@@ -1590,9 +1631,35 @@ groupe('Les trois filets');
   //   de téléchargement : le bouton restait muet, et on croyait avoir
   //   une sauvegarde alors qu'on n'avait rien.
   vrai('★ « Sauvegarder » ne compte plus sur le seul lien de téléchargement',
-    /greffonNatif\('Share'\)[\s\S]{0,120}?sauvegarderDansLAppli/.test(app));
+    /greffonNatif\('Filesystem'\)[\s\S]{0,200}?sauvegarderDansLAppli/.test(app));
   vrai('et le site garde son téléchargement, qui marche',
     /lien\.download = nomDeSauvegarde/.test(app));
+
+  /* ─── Le bouton qui envoyait au lieu de ranger ───
+     ★ Vu sur le vrai téléphone le 19 août 2026, en photo : « Sauvegarder »
+     ouvrait DIRECTEMENT le partage d'Android, qui propose d'abord des
+     contacts et des messageries. Le bouton avait donc l'air de demander à
+     qui ENVOYER son carnet — et il fallait deviner qu'on cherchait
+     « Fichiers » au milieu des visages. Il doit d'abord RANGER. */
+  {
+    const corps = (app.match(/async function sauvegarderDansLAppli[\s\S]*?\n}/) || [''])[0];
+    vrai('★ « Sauvegarder » range le fichier dans Documents/Ibadah',
+      corps.includes('rangerDansDocuments') && corps.includes('DOSSIER_COPIES'));
+    vrai('★ et il dit à l\'écran où il l\'a rangé',
+      corps.includes('cheminLisible(uri)'));
+    vrai('★ le partage ne vient qu\'APRÈS, et seulement si on le demande',
+      corps.indexOf('rangerDansDocuments') < corps.indexOf('envoyerUneCopie(uri)') &&
+      /if \(envoyer\) await envoyerUneCopie\(uri\)/.test(corps));
+    // Si Documents refuse (cela dépend de la version d'Android), on ne
+    // laisse pas quelqu'un repartir sans fichier.
+    vrai('★ un secours existe si le dossier Documents refuse',
+      corps.includes('rangerDansLeCache'));
+    // ★ Le chemin annoncé est long et ne contient aucune espace : sans
+    //   césure autorisée, il dépassait de la fenêtre et on ne lisait plus
+    //   la fin — c'est-à-dire le nom du fichier qu'on cherche.
+    vrai('★ un long chemin de fichier tient dans la fenêtre',
+      /\.ask__text \{[^}]*overflow-wrap: anywhere/.test(lire('styles.css')));
+  }
 
   /* ─── Ce que le filet 2 oblige à dire ───
      ★ « Désinstaller : tout part avec elle » est devenu FAUX le jour où

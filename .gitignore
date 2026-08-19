@@ -43,3 +43,7 @@ __pycache__/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Le document de relecture : contient un travail en cours, pas destine au depot
+relecture-adhkar.csv
+relecture-textes-ibadah.docx
