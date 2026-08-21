@@ -4,9 +4,18 @@
 
    ⚠️  À LIRE AVANT DE TOUCHER À CE FICHIER  ⚠️
 
-   Ces textes sont un PREMIER JET. Ils n'ont pas été relus par une
-   personne de science. Tant qu'une entrée porte « verifie: false »,
-   l'application affiche un bandeau d'avertissement.
+   Les 26 invocations de ce fichier ont été RELUES ET VALIDÉES le
+   21 août 2026 — texte arabe, traduction, source, répétitions et
+   moment — et rendues sans aucune correction. Elles portent donc
+   toutes « verifie: true », et l'application n'affiche plus
+   d'avertissement à leur sujet.
+
+   ⚠️ Le mécanisme, lui, reste en place et doit y rester. Tout texte
+   AJOUTÉ ensuite — en particulier ceux qui arrivent par la feuille
+   Google — repart de « verifie: false », et le bandeau réapparaît
+   tout seul tant qu'il n'a pas été relu à son tour. Ne jamais écrire
+   « verifie: true » sur un texte qu'une personne de science n'a pas
+   vu : c'est le seul garde-fou du fichier.
 
    ───────────────────────────────────────────────────────────
    COMMENT CORRIGER UN TEXTE (sans savoir coder)
@@ -62,7 +71,7 @@ const ADHKAR = [
     traduction: 'Allah, point de divinité à part Lui, le Vivant, Celui qui subsiste par Lui-même. Ni somnolence ni sommeil ne Le saisissent. À Lui appartient tout ce qui est dans les cieux et sur la terre. Qui peut intercéder auprès de Lui sans Sa permission ? Il connaît ce qui est devant eux et derrière eux, et ils ne cernent rien de Sa science, sauf ce qu\'Il veut. Son Trône déborde les cieux et la terre, et leur garde ne Lui coûte aucune peine. Et Il est le Très-Haut, l\'Immense.',
     source: 'Coran, sourate Al-Baqara (2), verset 255',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -74,7 +83,7 @@ const ADHKAR = [
     traduction: 'Dis : Il est Allah, Unique. Allah, Celui vers qui tout se tourne et qui ne dépend de rien. Il n\'a jamais engendré et n\'a pas été engendré. Et nul ne Lui est égal.',
     source: 'Coran, sourate 112',
     repetitions: 3,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -86,7 +95,7 @@ const ADHKAR = [
     traduction: 'Dis : je cherche protection auprès du Seigneur de l\'aube naissante, contre le mal de ce qu\'Il a créé, contre le mal de l\'obscurité quand elle s\'étend, contre le mal de celles qui soufflent sur les nœuds, et contre le mal de l\'envieux quand il envie.',
     source: 'Coran, sourate 113',
     repetitions: 3,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -98,7 +107,7 @@ const ADHKAR = [
     traduction: 'Dis : je cherche protection auprès du Seigneur des hommes, le Souverain des hommes, le Dieu des hommes, contre le mal du mauvais souffleur qui se dérobe, celui qui souffle le mal dans les poitrines des hommes, qu\'il soit des djinns ou des hommes.',
     source: 'Coran, sourate 114',
     repetitions: 3,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -110,7 +119,7 @@ const ADHKAR = [
     traduction: 'Ô Allah, Tu es mon Seigneur, il n\'y a de divinité que Toi. Tu m\'as créé et je suis Ton serviteur. Je tiens Ton engagement et Ta promesse autant que je le peux. Je cherche protection auprès de Toi contre le mal que j\'ai commis. Je reconnais Ton bienfait envers moi et je reconnais mon péché : pardonne-moi, car nul ne pardonne les péchés à part Toi.',
     source: 'Sahih al-Bukhari 6306',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -122,7 +131,7 @@ const ADHKAR = [
     traduction: 'Ô Allah, c\'est par Toi que nous entrons dans le matin, par Toi que nous entrons dans le soir, par Toi que nous vivons, par Toi que nous mourons, et c\'est vers Toi que se fera la résurrection.',
     source: 'Sunan Abi Dawud 5068 — Jami\' at-Tirmidhi 3391',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -134,7 +143,7 @@ const ADHKAR = [
     traduction: 'Ô Allah, c\'est par Toi que nous entrons dans le soir, par Toi que nous entrons dans le matin, par Toi que nous vivons, par Toi que nous mourons, et c\'est vers Toi qu\'est le retour.',
     source: 'Sunan Abi Dawud 5068 — Jami\' at-Tirmidhi 3391',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -146,7 +155,7 @@ const ADHKAR = [
     traduction: 'Nous voici au matin, et la royauté appartient à Allah. Louange à Allah. Il n\'y a de divinité qu\'Allah, seul, sans associé. À Lui la royauté, à Lui la louange, et Il est capable de toute chose.',
     source: 'Sahih Muslim 2723',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -158,7 +167,7 @@ const ADHKAR = [
     traduction: 'Nous voici au soir, et la royauté appartient à Allah. Louange à Allah. Il n\'y a de divinité qu\'Allah, seul, sans associé. À Lui la royauté, à Lui la louange, et Il est capable de toute chose.',
     source: 'Sahih Muslim 2723',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -170,7 +179,7 @@ const ADHKAR = [
     traduction: 'J\'agrée Allah comme Seigneur, l\'islam comme religion, et Muhammad — que la prière et le salut d\'Allah soient sur lui — comme Prophète.',
     source: 'Sunan Abi Dawud 5072 — Jami\' at-Tirmidhi 3389',
     repetitions: 3,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -182,7 +191,7 @@ const ADHKAR = [
     traduction: 'Allah me suffit. Il n\'y a de divinité que Lui. C\'est en Lui que je place ma confiance, et Il est le Seigneur du Trône immense.',
     source: 'Sunan Abi Dawud 5081',
     repetitions: 7,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -194,7 +203,7 @@ const ADHKAR = [
     traduction: 'Au nom d\'Allah, avec le nom duquel rien ne peut nuire, ni sur la terre ni dans le ciel. Et Il est Celui qui entend tout, Celui qui sait tout.',
     source: 'Sunan Abi Dawud 5088 — Jami\' at-Tirmidhi 3388',
     repetitions: 3,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -206,7 +215,7 @@ const ADHKAR = [
     traduction: 'Gloire et pureté à Allah, et à Lui la louange.',
     source: 'Sahih Muslim 2691 — Sahih al-Bukhari 6405',
     repetitions: 100,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -218,7 +227,7 @@ const ADHKAR = [
     traduction: 'Il n\'y a de divinité qu\'Allah, seul, sans associé. À Lui la royauté, à Lui la louange, et Il est capable de toute chose.',
     source: 'Sahih al-Bukhari 6403 — Sahih Muslim 2691',
     repetitions: 10,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -230,7 +239,7 @@ const ADHKAR = [
     traduction: 'Ô Allah, accorde Ta prière et Ton salut à notre Prophète Muhammad.',
     source: 'Coran 33:56 — Sahih Muslim 408',
     repetitions: 10,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -242,7 +251,7 @@ const ADHKAR = [
     traduction: 'Je cherche protection dans les paroles parfaites d\'Allah contre le mal de ce qu\'Il a créé.',
     source: 'Sahih Muslim 2709',
     repetitions: 3,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -254,7 +263,7 @@ const ADHKAR = [
     traduction: 'Je demande pardon à Allah.',
     source: 'Sahih Muslim 591',
     repetitions: 3,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -266,7 +275,7 @@ const ADHKAR = [
     traduction: 'Ô Allah, Tu es la Paix et de Toi vient la paix. Béni sois-Tu, ô Détenteur de la majesté et de la générosité.',
     source: 'Sahih Muslim 591',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -278,7 +287,7 @@ const ADHKAR = [
     traduction: 'Gloire et pureté à Allah — Louange à Allah — Allah est plus grand. Chacune de ces trois formules se dit trente-trois fois après la prière.',
     source: 'Sahih Muslim 597',
     repetitions: 33,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -290,7 +299,7 @@ const ADHKAR = [
     traduction: 'Il n\'y a de divinité qu\'Allah, seul, sans associé. À Lui la royauté, à Lui la louange, et Il est capable de toute chose. Cette formule complète les cent après la prière.',
     source: 'Sahih Muslim 597',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -302,7 +311,7 @@ const ADHKAR = [
     traduction: 'C\'est en Ton nom, ô Allah, que je meurs et que je vis.',
     source: 'Sahih al-Bukhari 6324',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -314,7 +323,7 @@ const ADHKAR = [
     traduction: 'Ô Allah, je me remets à Toi, je Te confie mon affaire, je m\'appuie sur Toi, par désir de Toi et par crainte de Toi. Il n\'y a ni refuge ni salut contre Toi qu\'auprès de Toi. Je crois en Ton Livre que Tu as fait descendre et en Ton Prophète que Tu as envoyé.',
     source: 'Sahih al-Bukhari 247 — Sahih Muslim 2710',
     repetitions: 1,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -326,7 +335,7 @@ const ADHKAR = [
     traduction: 'Gloire et pureté à Allah — Louange à Allah — Allah est plus grand. Au coucher, la dernière formule se dit trente-quatre fois.',
     source: 'Sahih al-Bukhari 3705 — Sahih Muslim 2727',
     repetitions: 33,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -338,7 +347,7 @@ const ADHKAR = [
     traduction: 'Je demande pardon à Allah et je reviens à Lui repentant.',
     source: 'Sahih al-Bukhari 6307 — Sahih Muslim 2702',
     repetitions: 100,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -350,7 +359,7 @@ const ADHKAR = [
     traduction: 'Il n\'y a de force ni de puissance qu\'en Allah.',
     source: 'Sahih al-Bukhari 6384 — Sahih Muslim 2704',
     repetitions: 10,
-    verifie: false
+    verifie: true
   },
 
   {
@@ -362,7 +371,7 @@ const ADHKAR = [
     traduction: 'Gloire et pureté à Allah, et à Lui la louange. Gloire et pureté à Allah l\'Immense.',
     source: 'Sahih al-Bukhari 6406 — Sahih Muslim 2694',
     repetitions: 10,
-    verifie: false
+    verifie: true
   }
 
 ];

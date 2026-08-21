@@ -661,13 +661,16 @@ groupe('La bibliothèque de dhikr');
         depart.filter(id => !ids.includes(id)), []);
     }
 
-    // Combien restent à relire ? Ce n'est pas une erreur, juste un rappel.
-    const aRelire = ADHKAR.filter(d => !d.verifie).length;
-    if (aRelire) {
-      console.log(`\n  ⚠️  ${aRelire} dhikr sur ${ADHKAR.length} n'ont pas encore été relus`);
-      console.log('     par une personne de science. Le bandeau d\'avertissement');
-      console.log('     reste affiché dans l\'application tant que c\'est le cas.\n');
-    }
+    /* ★ 21 août 2026 : les 26 invocations de ce fichier ont été relues et
+       validées — texte arabe, traduction, source, répétitions, moment — et
+       rendues SANS aucune correction. Ce test n'est pas décoratif : si l'une
+       d'elles repassait un jour à « verifie: false » par accident, le bandeau
+       reviendrait sur des textes relus et ferait douter de tout le reste.
+       ⚠️ Il ne vaut QUE pour ce fichier. Les dhikr venus de la feuille Google
+       arrivent, eux, à « verifie: false », et c'est le garde-fou : voir le
+       groupe « La feuille Google » plus bas, qui l'exige. */
+    verifier('★ les 26 invocations du fichier sont relues et validées',
+      ADHKAR.filter(d => !d.verifie).map(d => d.id), []);
   }
 }
 
@@ -1277,8 +1280,17 @@ groupe('Les pièges déjà rencontrés');
     /href="mailto:[^"@\s]+@[^"@\s]+\.[a-z]{2,}"/.test(conf));
   vrai('★ elle est bien dans la liste de publication',
     pub.includes('"confidentialite.html"'));
-  vrai('elle prévient que les textes ne sont pas relus',
-    /pas encore\s+été\s+relus/.test(conf));
+  /* ★ 21 août 2026 : les 26 invocations ont été relues et validées, sans
+     aucune correction. Les hadiths, eux, NE L'ONT PAS ÉTÉ — l'application va
+     les chercher sur internet. Une politique qui dirait « rien n'est relu »
+     serait devenue fausse ; une qui dirait « tout est relu » serait un
+     mensonge. Elle doit dire lequel des deux est lequel. */
+  vrai('★ elle dit que les invocations ont été relues et validées',
+    /invocations[\s\S]{0,60}relues et\s+validées/.test(conf));
+  vrai('★ et elle dit que les hadiths, eux, ne le sont pas',
+    /hadiths, eux, n'ont pas été relus/.test(conf));
+  vrai('★ et que tout texte ajouté ensuite porte un avertissement',
+    /ajouté après cette date/.test(conf));
 
   // Plus aucun point nulle part
   const store = lire('store.js');

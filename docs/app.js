@@ -778,10 +778,15 @@ function montrerHadith(h) {
   $('#hadith-text').textContent   = h.text;
   $('#hadith-source').textContent = h.source;
 
+  /* ⚠️ « avant la mise en ligne réelle » n'avait plus de sens : l'application
+     EST en ligne depuis le 18 août 2026. Et le 21 août, quand les 26
+     invocations ont été relues, les hadiths ne l'ont PAS été — ces deux
+     phrases sont donc les dernières de l'appli à porter un avertissement,
+     et elles doivent le dire au présent. Voir le blocage nº 3 du HANDOFF. */
   let note = h.note ? `<p style="margin:0">${echapper(h.note)}</p>` : '';
   note += h.enLigne
-    ? '<p class="hadith__warn">Texte récupéré automatiquement en ligne. La traduction doit être vérifiée avant la mise en ligne réelle.</p>'
-    : '<p class="hadith__warn">Pas de connexion : hadith affiché depuis la réserve de l\'application.</p>';
+    ? '<p class="hadith__warn">Texte récupéré automatiquement en ligne : cette traduction n\'a été relue par personne. Vérifie-la auprès de quelqu\'un de confiance avant de t\'y fier.</p>'
+    : '<p class="hadith__warn">Pas de connexion : hadith affiché depuis la réserve de l\'application. Ce texte n\'a pas été relu non plus.</p>';
 
   $('#hadith-note').innerHTML = note;
   $('#hadith-loading').hidden = true;
