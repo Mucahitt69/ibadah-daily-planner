@@ -44,6 +44,8 @@ Thumbs.db
 desktop.ini
 .DS_Store
 
-# Le document de relecture : contient un travail en cours, pas destine au depot
-relecture-adhkar.csv
-relecture-textes-ibadah.docx
+# Les documents de relecture : du travail en cours, pas destine au depot.
+# ⚠️ Un motif, et non trois noms : le 21 aout 2026 un quatrieme document est
+# apparu (relecture-hadiths-entiers.docx) et serait parti sur GitHub tout seul.
+# Ces fichiers portent des textes religieux NON RELUS -- voir le blocage n° 3.
+relecture-*
