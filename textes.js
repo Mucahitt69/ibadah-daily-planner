@@ -382,8 +382,11 @@ const TEXTES = {
   'set.contact.aria':   { fr: 'Écrire à l\'auteur de l\'application', en: 'Write to the app\'s author' },
   'set.contact.note':   { fr: 'Le message part avec la version de l\'application, le modèle de ton téléphone et l\'écran où tu te trouvais — c\'est ce qui permet de retrouver un problème. <b>Rien de ton carnet n\'est joint</b> : ni tes intentions, ni ton historique. Tu vois le message entier avant de l\'envoyer, et tu peux tout effacer.',
                           en: 'The message goes out with the app version, your phone model and the screen you were on — that is what makes a problem findable. <b>Nothing from your notebook is attached</b>: not your intentions, not your history. You see the whole message before sending it, and you can erase any of it.' },
-  'set.version.note':   { fr: 'Ibadah Daily Planner — version 0.4.<br>Tes données restent sur cet appareil. Seul le hadith du jour est cherché en ligne.',
-                          en: 'Ibadah Daily Planner — version 0.4.<br>Your data stays on this device. Only the hadith of the day is fetched online.' },
+  /* ⚠️ Le numéro de version s'écrit dans TROIS fichiers : ici (une fois par
+     langue), dans index.html, et dans android/app/build.gradle. C'est cette
+     ligne-ci qui gagne à l'écran. Un test refuse qu'ils se contredisent. */
+  'set.version.note':   { fr: 'Ibadah Daily Planner — version 0.5.<br>Tes données restent sur cet appareil. Seul le hadith du jour est cherché en ligne.',
+                          en: 'Ibadah Daily Planner — version 0.5.<br>Your data stays on this device. Only the hadith of the day is fetched online.' },
 
   /* Le message que l'on écrit à l'auteur */
   'contact.entete1':    { fr: 'Ces quelques lignes aident à retrouver le problème.',

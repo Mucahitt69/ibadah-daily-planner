@@ -2156,6 +2156,18 @@ groupe('La signature');
   verifier('★ le nom de version est celui affiché dans l\'appli',
     nomAndroid, nomAffiche);
 
+  /* ⚠️ Depuis que l'appli est bilingue, index.html ne fait plus foi : au
+     chargement, textes.js RÉÉCRIT ce paragraphe. On pouvait donc corriger
+     index.html et build.gradle, voir ce test au vert, et malgré tout servir
+     l'ancien numéro à l'écran — dans les deux langues. On regarde maintenant
+     le fichier qui gagne, langue par langue. */
+  const versionsAffichees = MOTS.LANGUES.map(l => {
+    const t = MOTS.TEXTES['set.version.note'][l.code] || '';
+    return l.code + ':' + ((t.match(/version\s+(\d+\.\d+)/) || [])[1] || 'ABSENTE');
+  });
+  verifier('★ et il l\'est dans CHAQUE langue (c\'est textes.js qui gagne)',
+    versionsAffichees, MOTS.LANGUES.map(l => l.code + ':' + nomAndroid));
+
   // Le modèle, lui, est public : il ne doit contenir que des trous à remplir.
   vrai('le modèle de fichier de clés ne contient aucun vrai mot de passe',
     /storePassword=A-REMPLIR/.test(modele) && /keyPassword=A-REMPLIR/.test(modele));

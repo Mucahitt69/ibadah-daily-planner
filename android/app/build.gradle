@@ -54,8 +54,14 @@ android {
         //    sur l'onglet Réglages, « Sauvegarder » qui ouvrait le partage,
         //    les hadiths coupés à 900 signes) et la relecture des 26
         //    invocations du 21 août.
-        versionCode 2
-        versionName "0.4"
+        //
+        // 3 / « 0.5 » : l'application parle anglais. La plupart des testeurs
+        //    recrutés sont anglophones. ⚠️ Le numéro s'écrit MAINTENANT DANS
+        //    TROIS FICHIERS — ici, dans index.html, et dans textes.js pour
+        //    chaque langue. C'est textes.js qui gagne à l'écran : oublier
+        //    celui-là afficherait l'ancien numéro sans que rien ne proteste.
+        versionCode 3
+        versionName "0.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
