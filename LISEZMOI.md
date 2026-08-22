@@ -65,10 +65,12 @@ nouvelle version en ligne.
 |---|---|
 | `index.html` | La structure de tous les écrans |
 | `styles.css` | Toutes les couleurs, tailles et animations |
+| `textes.js` | **Tous les mots de l'appli**, en français et en anglais. C'est ici qu'on corrige une phrase |
 | `store.js` | **Le carnet** : les données, les dates, les récurrences, les calculs |
 | `adhkar.js` | La bibliothèque de dhikr d'origine |
 | `feuille.js` | Va chercher les dhikr ajoutés depuis ta feuille Google |
 | `modele-adhkar.csv` | Le modèle à importer dans Google Sheets |
+| `hadith-secours-en.js` | Les hadiths en anglais, pour quand il n'y a pas de réseau |
 | `app.js` | L'affichage : dessine à l'écran ce que dit le carnet |
 | `rappels.js` | Les notifications |
 | `sw.js` | Le mode hors-ligne |
@@ -80,6 +82,47 @@ nouvelle version en ligne.
 Le dossier `docs/` est fabriqué automatiquement : ne le modifie jamais à la
 main, tes changements seraient écrasés. Modifie les fichiers de la racine.
 Le dossier `.claude/` contient les outils de l'assistant.
+
+---
+
+## La langue : français et anglais
+
+L'appli parle les deux. Elle choisit toute seule d'après la langue du
+téléphone, et le réglage est **tout en haut des Réglages**. Changer de langue
+recharge la page : c'est normal, rien n'est perdu.
+
+### Corriger une phrase mal traduite
+
+Tout se passe dans **`textes.js`**. Chaque phrase est une ligne comme celle-ci :
+
+```
+'today.vide.titre':   { fr: 'Ta journée est libre', en: 'Your day is open' },
+```
+
+Tu changes **uniquement** ce qui est entre les apostrophes après `fr:` ou après
+`en:`. Tu ne touches ni au nom à gauche, ni aux accolades, ni aux virgules.
+
+Trois pièges, les seuls :
+
+- Si ton texte contient une apostrophe (comme dans « l'Ami »), écris `\'` à la
+  place de `'`. Sinon la ligne se coupe en deux.
+- Si tu vois `{n}` ou `{nom}`, **garde-les**. Ce sont des trous que l'appli
+  remplit toute seule (un nombre, un nom d'intention). Un trou effacé, et c'est
+  le nombre qui disparaît de l'écran.
+- Si tu vois `<b>` ou `<br>`, laisse-les : ce sont des marques de mise en forme.
+
+Après une modification, lance `npm run verif` : si tu as cassé quelque chose,
+il te le dit tout de suite.
+
+### ⚠️ Les invocations en anglais ne sont pas relues
+
+Les 26 invocations ont été relues et validées **en français**. Leur traduction
+anglaise, elle, **n'a été relue par personne** — l'appli l'affiche donc avec un
+avertissement quand elle est en anglais.
+
+C'est voulu. Ne fais disparaître cet avertissement qu'après avoir fait relire le
+**sens anglais** par une personne de science : dans `adhkar.js`, en passant
+`verifie_en: false` à `verifie_en: true`, invocation par invocation.
 
 ---
 

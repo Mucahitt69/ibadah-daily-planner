@@ -8,14 +8,16 @@
    ci-dessous, sinon le navigateur continuera de servir l'ancienne copie.
    ═══════════════════════════════════════════════════════════ */
 
-const VERSION = 'ibadah-v3';
+const VERSION = 'ibadah-v4';   // v4 : ajout des fichiers de langue
 
 const FICHIERS = [
   './',
   './index.html',
   './styles.css',
+  './textes.js',
   './store.js',
   './adhkar.js',
+  './hadith-secours-en.js',
   './feuille.js',
   './app.js',
   './rappels.js',

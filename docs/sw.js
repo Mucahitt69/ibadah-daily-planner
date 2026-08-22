@@ -8,17 +8,19 @@
    ci-dessous, sinon le navigateur continuera de servir l'ancienne copie.
    ═══════════════════════════════════════════════════════════ */
 
-const VERSION = 'ibadah-4819cd3f';
+const VERSION = 'ibadah-494cc2f9';   // v4 : ajout des fichiers de langue
 
 const FICHIERS = [
   './',
   './index.html',
-  './styles.css?v=4819cd3f',
-  './store.js?v=4819cd3f',
-  './adhkar.js?v=4819cd3f',
-  './feuille.js?v=4819cd3f',
-  './app.js?v=4819cd3f',
-  './rappels.js?v=4819cd3f',
+  './styles.css?v=494cc2f9',
+  './textes.js?v=494cc2f9',
+  './store.js?v=494cc2f9',
+  './adhkar.js?v=494cc2f9',
+  './hadith-secours-en.js?v=494cc2f9',
+  './feuille.js?v=494cc2f9',
+  './app.js?v=494cc2f9',
+  './rappels.js?v=494cc2f9',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

@@ -120,7 +120,7 @@ const Rappels = (function () {
 
         liste.push({
           id:    numeroDeRappel(t.id, cle),
-          titre: 'C\'est le moment 🤍',
+          titre: T('rap.moment'),
           corps: t.nom,
           quand,
           nuit:  sansBruit(quand)
@@ -168,15 +168,15 @@ const Rappels = (function () {
     if (typeof LN.createChannel !== 'function') { canauxPrets = true; return; }
     try {
       await LN.createChannel({
-        id: CANAL_JOUR, name: 'Rappels',
-        description: 'Les rappels de tes intentions',
+        id: CANAL_JOUR, name: T('rap.canal.nom'),
+        description: T('rap.canal.desc'),
         importance: 4,            // 4 = il sonne et s'affiche par-dessus l'écran
         visibility: 1,            // 1 = visible sur l'écran verrouillé
         vibration: true
       });
       await LN.createChannel({
-        id: CANAL_NUIT, name: 'Rappels de la nuit',
-        description: 'Entre 22 h et 6 h : ils s\'affichent sans bruit',
+        id: CANAL_NUIT, name: T('rap.canalnuit.nom'),
+        description: T('rap.canalnuit.desc'),
         importance: 2,            // 2 = aucun son, aucune vibration
         visibility: 1,
         vibration: false
@@ -306,7 +306,7 @@ const Rappels = (function () {
       annulerMinuteurs();
       if (enAppli()) await toutAnnulerNatif();
       majTexteAide();
-      toast('Rappels mis en pause');
+      toast(T('rap.pause'));
       return;
     }
 
@@ -319,14 +319,14 @@ const Rappels = (function () {
     if (!accorde) {
       Store.reglerOption('notif', false);
       majTexteAide();
-      toast('Sans autorisation, les rappels ne peuvent pas s\'afficher');
+      toast(T('rap.refus'));
       return;
     }
 
     Store.reglerOption('notif', true);
     majTexteAide();
     await replanifier();
-    toast('Rappels activés 🔔');
+    toast(T('rap.actifs'));
   }
 
   async function autorisationWeb() {
@@ -353,7 +353,7 @@ const Rappels = (function () {
       bouton.disabled = false;
       bouton.checked  = actif;
       aide.textContent = actif
-        ? 'Ils sonnent même quand l\'application est fermée'
+        ? T('rap.natif.on')
         : 'Recevoir des rappels doux aux heures que tu choisis';
 
       // L'autorisation a pu être retirée dans les réglages du téléphone,
@@ -363,7 +363,7 @@ const Rappels = (function () {
           .then(p => {
             if (p.display === 'granted') return;
             bouton.checked = false;
-            aide.textContent = 'Les notifications sont bloquées dans les réglages du téléphone';
+            aide.textContent = T('rap.bloques.tel');
           })
           .catch(() => {});
       }
@@ -374,13 +374,13 @@ const Rappels = (function () {
     majPortes();
 
     if (!supporteWeb) {
-      aide.textContent = 'Ton navigateur ne gère pas les notifications.';
+      aide.textContent = T('rap.pasgere');
       bouton.disabled = true;
       bouton.checked  = false;
       return;
     }
     if (Notification.permission === 'denied') {
-      aide.textContent = 'Les notifications sont bloquées dans les réglages du navigateur.';
+      aide.textContent = T('rap.bloques.nav');
       bouton.disabled = true;
       bouton.checked  = false;
       return;
@@ -388,7 +388,7 @@ const Rappels = (function () {
     bouton.disabled = false;
     bouton.checked = actif && Notification.permission === 'granted';
     aide.textContent = bouton.checked
-      ? 'Actifs tant que l\'appli est ouverte ou en arrière-plan'
+      ? T('rap.web.on')
       : 'Recevoir des rappels doux aux heures que tu choisis';
   }
 
@@ -437,8 +437,8 @@ const Rappels = (function () {
     // On attend un instant : le message ne doit pas gêner l'ouverture.
     setTimeout(() => {
       toast(reste === 1
-        ? 'Il te reste une seule chose aujourd\'hui 🤍'
-        : `Il te reste ${reste} choses aujourd'hui 🤍`);
+        ? T('rap.reste.une')
+        : T('rap.reste.n', { n: reste }));
     }, 1400);
   }
 

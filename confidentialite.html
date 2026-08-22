@@ -9,7 +9,13 @@
   <!-- Cette page est volontairement autonome : elle porte sa propre mise en
        forme, sans dépendre de styles.css. Deux raisons. Elle doit rester
        lisible même si le reste de l'application change, et Google exige
-       qu'elle soit consultable par n'importe qui, sans avoir rien installé. -->
+       qu'elle soit consultable par n'importe qui, sans avoir rien installé.
+
+       ⚠️ Elle est BILINGUE dans un seul fichier, et c'est voulu : le Play
+       Store ne prend qu'UNE SEULE adresse de politique de confidentialité.
+       Deux fichiers séparés auraient laissé la moitié des testeurs sur une
+       page qu'ils ne savent pas lire. La page choisit la langue du visiteur,
+       et le bouton en haut permet de changer. -->
   <style>
     :root {
       --bg:      #F4F1EA;
@@ -64,13 +70,50 @@
       color: var(--muted);
       font-size: .875rem;
     }
+
+    /* Le choix de la langue, posé en haut à droite. Discret : ce n'est pas
+       le sujet de la page, mais il doit se voir sans être cherché. */
+    .langues {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .langues button {
+      font: inherit;
+      font-size: .875rem;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .langues button[aria-pressed="true"] {
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Sans JavaScript, les deux langues restent lisibles l'une sous l'autre :
+       une politique de confidentialité ne doit jamais devenir illisible. */
+    [data-langue][hidden] { display: none; }
   </style>
 </head>
 <body>
 <main>
 
+  <div class="langues" role="group" aria-label="Langue / Language">
+    <button type="button" data-choix="fr" aria-pressed="true">Français</button>
+    <button type="button" data-choix="en" aria-pressed="false">English</button>
+  </div>
+
+
+  <!-- ══════════════════════ FRANÇAIS ══════════════════════ -->
+  <div data-langue="fr" lang="fr">
+
   <h1>Politique de confidentialité</h1>
-  <p class="date">Ibadah Daily Planner — mise à jour le 21 août 2026</p>
+  <p class="date">Ibadah Daily Planner — mise à jour le 22 août 2026</p>
 
   <div class="encadre">
     <p><strong>En une phrase :</strong> Ibadah ne collecte rien, n'envoie rien,
@@ -128,6 +171,12 @@
   ni ton historique. Sans internet, l'application continue de fonctionner
   normalement.</p>
 
+  <h2>La langue</h2>
+  <p>L'application est disponible en français et en anglais. Elle choisit
+  d'après la langue de ton téléphone, et tu peux en changer dans les Réglages.
+  Ce choix est enregistré sur ton appareil, comme le reste : il n'est envoyé
+  à personne.</p>
+
   <h2>Les notifications</h2>
   <p>Si tu actives les rappels, l'application demande l'autorisation d'afficher
   des notifications. Elle s'en sert <strong>uniquement</strong> pour les rappels
@@ -159,13 +208,18 @@
   <h2>Une chose importante, qui n'est pas une question de vie privée</h2>
   <div class="encadre">
     <p><strong>Les 26 invocations de la bibliothèque ont été relues et
-    validées</strong> le 21 août 2026 : le texte arabe, la traduction, la
-    source, le nombre de répétitions et le moment indiqué. Elles ne portent
-    plus d'avertissement.</p>
+    validées en français</strong> le 21 août 2026 : le texte arabe, la
+    traduction, la source, le nombre de répétitions et le moment indiqué. En
+    français, elles ne portent plus d'avertissement.</p>
 
-    <p><strong>Les hadiths, eux, n'ont pas été relus.</strong> L'application va
-    les chercher sur internet et affiche une traduction que personne n'a
-    vérifiée. Elle le dit à l'écran, sur chaque hadith.</p>
+    <p><strong>Leur traduction anglaise, elle, n'a été relue par personne.</strong>
+    Le texte arabe et sa prononciation restent ceux qui ont été validés ; c'est
+    le <em>sens rendu en anglais</em> qui est neuf. L'application l'affiche donc
+    avec un avertissement lorsqu'elle est en anglais.</p>
+
+    <p><strong>Les hadiths, eux, n'ont pas été relus non plus.</strong>
+    L'application va les chercher sur internet et affiche une traduction que
+    personne n'a vérifiée. Elle le dit à l'écran, sur chaque hadith.</p>
 
     <p>Il en va de même de tout texte <strong>ajouté après cette date</strong> :
     il porte un avertissement tant qu'une personne de science ne l'a pas vu à
@@ -186,6 +240,198 @@
   <footer>
     <p><a href="./index.html">← Revenir à Ibadah</a></p>
   </footer>
+
+  </div>
+
+
+  <!-- ══════════════════════ ENGLISH ══════════════════════ -->
+  <div data-langue="en" lang="en" hidden>
+
+  <h1>Privacy Policy</h1>
+  <p class="date">Ibadah Daily Planner — updated 22 August 2026</p>
+
+  <div class="encadre">
+    <p><strong>In one sentence:</strong> Ibadah collects nothing, sends nothing,
+    and knows nothing about you. Everything you write stays on your phone.</p>
+  </div>
+
+  <h2>What the app does not do</h2>
+  <ul>
+    <li>No account, no sign-up, no password.</li>
+    <li>No advertising, no trackers, no analytics.</li>
+    <li>No payments, no purchases.</li>
+    <li>No data is sent to any server of ours: no such server exists.</li>
+    <li>What you write down is never shared with anyone.</li>
+  </ul>
+
+  <h2>Where your data lives</h2>
+  <p>Your intentions, your history and your settings are stored
+  <strong>only in your phone's memory</strong>, in the storage set aside for the
+  app. Nobody else can reach it — not even us.</p>
+  <p>The "Back up my data" button creates a file that <strong>you alone</strong>
+  decide to send somewhere, or not.</p>
+
+  <h2>Backup copies</h2>
+  <p>So that months of records are not lost to a single accident, the app keeps
+  copies. All of them stay on your phone, and none is sent anywhere:</p>
+  <ul>
+    <li>One copy in the app's own storage, refreshed on every change. It is
+        there to put your notebook back if it ever disappears.</li>
+    <li><strong>One copy per day, as a file, in the
+        <em>Documents/Ibadah</em> folder on your phone.</strong> The last seven
+        days are kept, older ones are deleted automatically. These files can be
+        read by you and by any app you grant access to your documents.</li>
+  </ul>
+  <p>If Android's automatic backup is switched on for your phone (it is on by
+  default), <strong>Google may also keep a copy of the app's data in your own
+  Google account</strong>, as it does for your other apps. That copy belongs to
+  you and follows Google's rules, not ours. You can switch it off in your
+  phone's settings, under "Backup".</p>
+
+  <h2>The only two internet connections</h2>
+  <p>The app connects to two places, only to <strong>read</strong>, and never to
+  send anything about you:</p>
+  <ul>
+    <li><strong>cdn.jsdelivr.net</strong> — to fetch the hadith of the day.</li>
+    <li><strong>docs.google.com</strong> — to read the list of dhikr published
+        by the app's author.</li>
+  </ul>
+  <p>As with any website you visit, these servers see your IP address go past.
+  They receive nothing else: not your name, not your intentions, not your
+  history. Without internet, the app keeps working normally.</p>
+
+  <h2>Language</h2>
+  <p>The app is available in French and English. It chooses based on your
+  phone's language, and you can change it in Settings. That choice is stored on
+  your device, like everything else: it is sent to no one.</p>
+
+  <h2>Notifications</h2>
+  <p>If you turn reminders on, the app asks permission to show notifications. It
+  uses that permission <strong>only</strong> for reminders at the times you chose
+  yourself. Nothing is sent anywhere: the reminders are made by your phone, for
+  your phone.</p>
+
+  <h2>Erasing your data</h2>
+  <ul>
+    <li>In the app: Settings → <strong>Erase everything</strong>. The notebook
+        and its backup copy go together, immediately.</li>
+    <li>Uninstalling the app takes the notebook and its backup copy with it.</li>
+  </ul>
+  <div class="encadre">
+    <p><strong>Careful — one exception.</strong> The daily copies kept in
+    <em>Documents/Ibadah</em> <strong>do not go away</strong> when you uninstall
+    — that is precisely what they are for. To erase those too, open your phone's
+    "My Files" app, go to <em>Documents</em>, and delete the <em>Ibadah</em>
+    folder.</p>
+    <p>And if Android backup is switched on, the copy Google keeps is erased
+    from your Google account settings.</p>
+  </div>
+  <p>No request to file, no waiting period: you do it yourself, and it is final.</p>
+
+  <h2>Children</h2>
+  <p>The app is not intended for children under 13 and asks them for no
+  information.</p>
+
+  <h2>Something important, which is not a privacy matter</h2>
+  <div class="encadre">
+    <p><strong>The 26 invocations in the library were reviewed and validated in
+    French</strong> on 21 August 2026: the Arabic text, the translation, the
+    source, the number of repetitions and the time of day. In French, they no
+    longer carry a warning.</p>
+
+    <p><strong>Their English translation, however, has been reviewed by no
+    one.</strong> The Arabic text and its transliteration are the ones that were
+    validated; it is the <em>meaning rendered in English</em> that is new. The
+    app therefore displays it with a warning when it is in English.</p>
+
+    <p><strong>The hadiths have not been reviewed either.</strong> The app
+    fetches them from the internet and shows a translation that nobody has
+    checked. It says so on screen, on every hadith.</p>
+
+    <p>The same goes for any text <strong>added after that date</strong>: it
+    carries a warning until a person of knowledge has seen it in turn.</p>
+
+    <p>The app is in closed testing, among a few people. Check any text carrying
+    a warning with someone you trust before relying on it.</p>
+  </div>
+
+  <h2>If this page changes</h2>
+  <p>Any change will appear here, with a new date at the top of the page.</p>
+
+  <h2>Contact us</h2>
+  <p>A question, a correction to report:
+  <a href="mailto:busala.safa@gmail.com">busala.safa@gmail.com</a></p>
+
+  <footer>
+    <p><a href="./index.html">← Back to Ibadah</a></p>
+  </footer>
+
+  </div>
+
+
+  <script>
+    /* Le choix de la langue.
+
+       ⚠️ Les deux versions sont écrites en clair dans la page, et la version
+       anglaise est la seule cachée au départ. Si ce script ne tourne pas —
+       navigateur ancien, JavaScript coupé — le visiteur voit au moins la
+       version française en entier. Une politique de confidentialité qui
+       s'affiche vide serait un problème bien plus grave qu'une page dans la
+       mauvaise langue. */
+    (function () {
+      var blocs   = document.querySelectorAll('[data-langue]');
+      var boutons = document.querySelectorAll('.langues button');
+      var TITRES  = {
+        fr: 'Confidentialité — Ibadah Daily Planner',
+        en: 'Privacy Policy — Ibadah Daily Planner'
+      };
+
+      function montrer(code) {
+        for (var i = 0; i < blocs.length; i++) {
+          blocs[i].hidden = (blocs[i].getAttribute('data-langue') !== code);
+        }
+        for (var j = 0; j < boutons.length; j++) {
+          boutons[j].setAttribute('aria-pressed',
+            boutons[j].getAttribute('data-choix') === code ? 'true' : 'false');
+        }
+        document.documentElement.setAttribute('lang', code);
+        document.title = TITRES[code] || TITRES.fr;
+        /* ⚠️ On écrit sous une clé À NOUS, pas sous « ibadah-langue ».
+           Avec la clé de l'application, quelqu'un qui lit cette page en
+           anglais aurait retrouvé toute son appli en anglais le lendemain,
+           sans jamais l'avoir demandé. */
+        try { localStorage.setItem('ibadah-langue-page', code); } catch (e) {}
+      }
+
+      /* L'ordre compte :
+         1. ce que le visiteur a choisi SUR CETTE PAGE ;
+         2. sinon la langue de son application, s'il l'a déjà réglée ;
+         3. sinon la langue de son navigateur. */
+      var choisie = null;
+      try {
+        choisie = localStorage.getItem('ibadah-langue-page')
+               || localStorage.getItem('ibadah-langue');
+      } catch (e) {}
+
+      if (choisie !== 'fr' && choisie !== 'en') {
+        var dites = navigator.languages && navigator.languages.length
+          ? navigator.languages : [navigator.language || ''];
+        choisie = 'fr';
+        for (var k = 0; k < dites.length; k++) {
+          var court = String(dites[k]).slice(0, 2).toLowerCase();
+          if (court === 'fr' || court === 'en') { choisie = court; break; }
+        }
+      }
+      montrer(choisie);
+
+      for (var b = 0; b < boutons.length; b++) {
+        boutons[b].addEventListener('click', function () {
+          montrer(this.getAttribute('data-choix'));
+          window.scrollTo(0, 0);
+        });
+      }
+    })();
+  </script>
 
 </main>
 </body>

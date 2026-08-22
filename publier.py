@@ -22,8 +22,10 @@ SITE = RACINE / "docs"          # GitHub Pages publie le contenu du dossier « d
 FICHIERS = [
     "index.html",
     "styles.css",
+    "textes.js",
     "store.js",
     "adhkar.js",
+    "hadith-secours-en.js",
     "feuille.js",
     "app.js",
     "rappels.js",
@@ -54,7 +56,8 @@ HEADERS = """/sw.js
 
 
 # Fichiers dont le navigateur pourrait garder une vieille copie.
-ESTAMPILLES = ["styles.css", "store.js", "adhkar.js", "feuille.js", "app.js", "rappels.js"]
+ESTAMPILLES = ["styles.css", "textes.js", "store.js", "adhkar.js",
+               "hadith-secours-en.js", "feuille.js", "app.js", "rappels.js"]
 
 
 def estampiller(dossier):

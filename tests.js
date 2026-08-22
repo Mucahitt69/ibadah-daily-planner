@@ -46,19 +46,47 @@ function fauxNavigateur(sauvegarde, jourSimule) {
   };
 }
 
-/* Chaque test repart d'un store neuf : aucun ne peut polluer le suivant. */
+/* Depuis le 22 août 2026, store.js demande ses mots à textes.js
+   (T('freq.daily')…). Il ne peut donc plus être chargé tout seul :
+   sans textes.js, il s'arrête sur « T is not defined ».
+
+   On les charge ensemble, dans le même ordre que la vraie page.
+   « navigator » est nécessaire : textes.js lit la langue du téléphone. */
 function chargerStore(options) {
   const o = options || {};
   const nav = fauxNavigateur(o.sauvegarde, o.jour);
+  const fauxNavigateurLangue = { language: o.langue || 'fr-FR', languages: [o.langue || 'fr-FR'] };
   const fabriquer = new Function(
-    'localStorage', 'location', lire('store.js') + '\n;return Store;');
-  return { Store: fabriquer(nav.localStorage, nav.location), nav };
+    'localStorage', 'location', 'navigator',
+    lire('textes.js') + '\n' + lire('store.js') + '\n;return Store;');
+  return { Store: fabriquer(nav.localStorage, nav.location, fauxNavigateurLangue), nav };
+}
+
+/* Le même, mais en rendant aussi les outils de langue : les tests
+   des traductions en ont besoin. */
+function chargerTextes(langue) {
+  const memoire = new Map();
+  if (langue) memoire.set('ibadah-langue', langue);
+  const faux = {
+    getItem: c => (memoire.has(c) ? memoire.get(c) : null),
+    setItem: (c, v) => memoire.set(c, String(v)),
+    removeItem: c => memoire.delete(c)
+  };
+  return new Function('localStorage', 'navigator',
+    lire('textes.js') +
+    '\n;return { T, TEXTES, LANGUES, Langue, champDhikr, dhikrRelu, dhikrTraductionNonRelue };'
+  )(faux, { language: 'fr-FR', languages: ['fr-FR'] });
 }
 
 function chargerAdhkar() {
   return new Function(lire('adhkar.js') +
     '\n;return { ADHKAR, ADHKAR_CATEGORIES };')();
 }
+
+/* Les mots de l'application, chargés une fois pour toutes.
+   Beaucoup de vérifications parlent d'une phrase précise : depuis que
+   les phrases vivent dans textes.js, c'est ici qu'elles se lisent. */
+const MOTS = chargerTextes();
 
 /* ─── Charger les rappels sans écran ────────────────────────
    Pendant longtemps, ce fichier n'a pas lu une seule ligne de
@@ -73,10 +101,19 @@ function chargerAdhkar() {
    ⚠️ Cela ne prouve toujours pas qu'un téléphone sonne. Seule une
    vraie alarme sur un vrai téléphone le prouve. */
 function chargerRappels(Store) {
+  // rappels.js demande lui aussi ses mots à textes.js : on le charge avant,
+  // exactement comme le fait index.html.
   const fabriquer = new Function(
-    'Store', 'toast', 'estNatif', 'Capacitor', 'document', 'window', 'navigator',
-    lire('rappels.js') + '\n;return Rappels;');
-  return fabriquer(Store, function () {}, function () { return false; });
+    'Store', 'toast', 'estNatif', 'Capacitor', 'document', 'window', 'navigator', 'localStorage',
+    lire('textes.js') + '\n' + lire('rappels.js') + '\n;return Rappels;');
+  const memoire = new Map();
+  return fabriquer(
+    Store, function () {}, function () { return false; },
+    undefined, undefined, undefined,
+    { language: 'fr-FR', languages: ['fr-FR'] },
+    { getItem: c => (memoire.has(c) ? memoire.get(c) : null),
+      setItem: (c, v) => memoire.set(c, String(v)),
+      removeItem: c => memoire.delete(c) });
 }
 
 /* Un rappel attendu mais absent doit faire passer la vérification au ROUGE,
@@ -1046,7 +1083,10 @@ groupe('Sauvegarder et restaurer');
 
     const clear = app.match(/#btn-clear'\)\.addEventListener[\s\S]*?\n\}\);/);
     vrai('★ tout effacer demande confirmation', !!clear && /await demander\(/.test(clear[0]));
-    vrai('et rappelle de sauvegarder d\'abord', !!clear && /sauvegarde/.test(clear[0]));
+    vrai('et rappelle de sauvegarder d\'abord',
+      !!clear && /T\('clear\.texte'/.test(clear[0])
+      && /sauvegarde/.test(MOTS.TEXTES['clear.texte'].fr)
+      && /backup/i.test(MOTS.TEXTES['clear.texte'].en));
 
     // ★ « Charger des données d'exemple » REMPLACE le carnet (store.js :
     //   chargerDemo fait `etat = vide()`). Il détruisait donc autant que
@@ -1054,7 +1094,10 @@ groupe('Sauvegarder et restaurer');
     //   piège, une ligne plus haut. Trouvé le 16 août 2026.
     const demo = app.match(/#btn-demo'\)\.addEventListener[\s\S]*?\n\}\);/);
     vrai('★ charger l\'exemple demande confirmation', !!demo && /await demander\(/.test(demo[0]));
-    vrai('et rappelle de sauvegarder d\'abord', !!demo && /sauvegarde/.test(demo[0]));
+    vrai('et rappelle de sauvegarder d\'abord',
+      !!demo && /T\('demo\.texte'/.test(demo[0])
+      && /sauvegarde/.test(MOTS.TEXTES['demo.texte'].fr)
+      && /backup/i.test(MOTS.TEXTES['demo.texte'].en));
     // Sur un carnet vide il n'y a rien à perdre : demander serait un obstacle
     // posé devant la seule bonne façon de découvrir l'application.
     vrai('★ mais ne demande rien si le carnet est vide',
@@ -1117,7 +1160,9 @@ groupe('Les questions en français');
   vrai('★ « demander » rend une promesse',
     /function poserQuestion[\s\S]*?return new Promise\(resoudre/.test(app));
   vrai('« demander » propose deux issues',
-    /function demander\([\s\S]{0,200}?annuler: 'Annuler'/.test(app));
+    /function demander\([\s\S]{0,200}?annuler: T\('ask\.annuler'\)/.test(app)
+    && MOTS.TEXTES['ask.annuler'].fr === 'Annuler'
+    && !!MOTS.TEXTES['ask.annuler'].en);
   vrai('« prévenir » n\'en propose qu\'une',
     /function prevenir\([\s\S]{0,200}?annuler: ''/.test(app));
 
@@ -1176,8 +1221,16 @@ groupe('Le hadith du jour');
   vrai('la liste des recueils en ligne est trouvée', !!bloc);
 
   if (bloc) {
-    const editions = [...bloc[1].matchAll(/edition:\s*'([^']+)'/g)].map(m => m[1]);
-    verifier('★ un seul recueil en ligne', editions, ['fra-nawawi']);
+    // Une édition par langue, déclarée dans EDITIONS juste au-dessus.
+    const carte = app.match(/const EDITIONS = \{([^}]*)\}/);
+    vrai('la carte des éditions par langue est trouvée', !!carte);
+    const editions = carte
+      ? [...carte[1].matchAll(/'([^']+)'/g)].map(m => m[1])
+      : [];
+    verifier('★ une édition par langue, et rien d\'autre',
+      editions.sort(), ['eng-nawawi', 'fra-nawawi']);
+    vrai('★ le recueil choisi vient bien de cette carte',
+      /edition:\s*EDITIONS\[Langue\.choisie\(\)\]/.test(bloc[1]));
     faux('★ aucun hadith qudsi en ligne — ils ne sont pas relus',
       editions.some(e => /qudsi/.test(e)));
   }
@@ -1564,7 +1617,9 @@ groupe('Les rappels : les promesses tenues');
   faux('★ les Réglages ne promettent plus « aucun rappel » la nuit',
     /id="quiet-help">\s*Aucun rappel/.test(html));
   vrai('ils annoncent un rappel sans son',
-    /id="quiet-help">[^<]*sans son/.test(html));
+    /id="quiet-help"[^>]*>[^<]*sans son/.test(html)
+    && /sans son/.test(MOTS.TEXTES['set.quiet.help'].fr)
+    && /without sound/i.test(MOTS.TEXTES['set.quiet.help'].en));
   vrai('la feuille prévient avant de choisir une heure de nuit',
     /id="f-time-nuit"/.test(html));
 
@@ -1588,8 +1643,13 @@ groupe('Les rappels : les promesses tenues');
   faux('★ aucune alarme répétitive : on repose la liste entière',
     /repeats:\s*true|every:\s*'/.test(rap));
 
-  vrai('les rappels restent dans rappels.js, sans nouveau fichier',
-    [...html.matchAll(/<script src="([^"?]+)"/g)].map(m => m[1]).length === 5);
+  const scripts = [...html.matchAll(/<script src="([^"?]+)"/g)].map(m => m[1]);
+  verifier('les rappels restent dans rappels.js, sans nouveau fichier',
+    scripts,
+    ['textes.js', 'store.js', 'adhkar.js', 'hadith-secours-en.js',
+     'feuille.js', 'app.js', 'rappels.js']);
+  vrai('★ textes.js est chargé en PREMIER — les autres lui demandent leurs mots',
+    scripts[0] === 'textes.js');
 }
 
 
@@ -1734,7 +1794,9 @@ groupe('Le passage en application');
   vrai('à la racine, il ramène d\'abord à « Aujourd\'hui »',
     /aller\('today'\); return true/.test(app));
   vrai('★ et il faut DEUX appuis pour quitter', /exitApp\(\)/.test(app) &&
-    /Appuie encore pour quitter/.test(app));
+    /T\('toast\.quitter'\)/.test(app) &&
+    /Appuie encore/.test(MOTS.TEXTES['toast.quitter'].fr) &&
+    !!MOTS.TEXTES['toast.quitter'].en);
 
   /* ─── La barre d'état ─── */
   vrai('le greffon de la barre d\'état est installé', !!d['@capacitor/status-bar']);
@@ -1777,7 +1839,8 @@ groupe('Le passage en application');
   // ★ Appelée avec appliquerTheme, PAS dans seMettreAuFormatAppli() : celle-ci
   //   sort tout de suite hors application, et le site aurait gardé le bug.
   vrai('★ la mesure vaut aussi pour le site, pas seulement l\'application',
-    /appliquerTheme\([\s\S]{0,40}?suivreLeClavier\(\);/.test(app));
+    /appliquerTheme\([\s\S]{0,400}?suivreLeClavier\(\);/.test(app)
+    && !/seMettreAuFormatAppli\(\)[\s\S]{0,400}?suivreLeClavier\(\);/.test(app));
   // ★ Le navigateur sait faire le travail seul depuis Chrome 108 ; la mesure
   //   ci-dessus n'est que le filet pour les autres.
   vrai('★ le navigateur est prié de rétrécir la page de lui-même',
@@ -2102,6 +2165,226 @@ groupe('La signature');
   //    trousseau, et le message d'erreur ne dirait pas ça.
   faux('★ et il montre le chemin avec des barres obliques',
     /storeFile=.*\\/.test(modele));
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Les langues — le 22 août 2026, l'application a appris l'anglais
+   ═══════════════════════════════════════════════════════════
+   Ces vérifications existent parce qu'une traduction se casse en
+   silence : une phrase oubliée, et l'écran affiche un mot de code
+   au milieu d'une page ; un trou {n} oublié, et c'est un nombre
+   qui disparaît. Rien de tout cela ne fait planter l'application —
+   donc rien ne le signale, sauf ici.
+   ═══════════════════════════════════════════════════════════ */
+{
+  groupe('Les langues');
+
+  const html    = lire('index.html');
+  const app     = lire('app.js');
+  const textes  = lire('textes.js');
+  const CLES    = Object.keys(MOTS.TEXTES);
+  const CODES   = MOTS.LANGUES.map(l => l.code);
+
+  vrai('l\'application déclare au moins deux langues', CODES.length >= 2);
+  vrai('le français est la langue de repli', MOTS.LANGUES[0].code === 'fr');
+  vrai('il y a beaucoup de phrases à traduire', CLES.length > 300);
+
+  /* ─── Aucune phrase manquante ─── */
+  const sansTraduction = [];
+  const vides = [];
+  CLES.forEach(c => {
+    CODES.forEach(code => {
+      const v = MOTS.TEXTES[c][code];
+      if (v === undefined) sansTraduction.push(c + ' (' + code + ')');
+      else if (typeof v !== 'string' || v.trim() === '') vides.push(c + ' (' + code + ')');
+    });
+  });
+  verifier('★ chaque phrase existe dans chaque langue', sansTraduction, []);
+  verifier('★ aucune phrase vide', vides, []);
+
+  /* ─── Les trous {n} doivent se correspondre ───
+     Un trou présent en français et absent en anglais, c'est un nombre
+     ou un nom qui disparaît de l'écran — sans la moindre erreur. */
+  const trousDe = t => (String(t).match(/\{\w+\}/g) || []).sort().join(',');
+  const trousDepareilles = CLES.filter(c => {
+    const ref = trousDe(MOTS.TEXTES[c].fr);
+    return CODES.some(code => trousDe(MOTS.TEXTES[c][code]) !== ref);
+  });
+  verifier('★ les trous {n} sont les mêmes dans toutes les langues', trousDepareilles, []);
+
+  /* ─── Les marques de la page pointent sur de vraies phrases ─── */
+  const marques = [...html.matchAll(/data-t(?:-html|-aria|-ph|-content)?="([^"]+)"/g)].map(m => m[1]);
+  vrai('la page porte de nombreuses marques de traduction', marques.length > 120);
+  verifier('★ chaque marque de la page a bien sa phrase',
+    [...new Set(marques.filter(m => !MOTS.TEXTES[m]))], []);
+
+  /* ─── Les appels T('…') du code pointent sur de vraies phrases ───
+     On ne regarde que les clés écrites en toutes lettres : celles
+     construites à la volée (T('cat.' + id)) ne se vérifient pas ici. */
+  const appelees = new Set();
+  ['app.js', 'store.js', 'rappels.js', 'feuille.js'].forEach(f => {
+    for (const m of lire(f).matchAll(/\bT\('([^']+)'\)/g)) appelees.add(m[1]);
+    for (const m of lire(f).matchAll(/\bT\('([^']+)',/g))  appelees.add(m[1]);
+  });
+  vrai('le code demande bien ses mots à textes.js', appelees.size > 80);
+  verifier('★ chaque phrase demandée par le code existe',
+    [...appelees].filter(c => !MOTS.TEXTES[c]).sort(), []);
+
+  /* ─── Plus de français cousu dans la page ───
+     Le piège de départ : une phrase laissée en dur dans index.html
+     reste en français quoi qu'il arrive, et personne ne le voit tant
+     qu'on ne lit pas la page en anglais. */
+  const durs = (function () {
+    /* On parcourt la page balise par balise en gardant la pile des
+       éléments ouverts. Une phrase est couverte dès qu'UN de ses
+       parents porte une marque — sinon le <b> à l'intérieur d'un
+       paragraphe traduit passerait pour du français oublié. */
+    const corps = html.slice(html.indexOf('<body'));
+    const SEULES = /^(br|hr|img|input|meta|link|circle|path|rect|use|source)$/i;
+    const pile = [];
+    const trouves = [];
+    let i = 0;
+
+    while (i < corps.length) {
+      const ouvre = corps.indexOf('<', i);
+
+      // Le texte qui précède la prochaine balise.
+      const texte = corps.slice(i, ouvre === -1 ? corps.length : ouvre)
+        .replace(/\s+/g, ' ').trim();
+      if (texte.length >= 12 && /[a-zA-ZÀ-ÿ]/.test(texte)
+          && !/[{}]/.test(texte) && !pile.some(e => e.marque)) {
+        trouves.push(texte.slice(0, 60));
+      }
+      if (ouvre === -1) break;
+
+      // Les commentaires ne s'affichent pas.
+      if (corps.startsWith('<!--', ouvre)) {
+        const fin = corps.indexOf('-->', ouvre);
+        i = fin === -1 ? corps.length : fin + 3;
+        continue;
+      }
+
+      const ferme = corps.indexOf('>', ouvre);
+      if (ferme === -1) break;
+      const balise = corps.slice(ouvre, ferme + 1);
+      const nom = (balise.match(/^<\/?\s*([a-zA-Z0-9]+)/) || [])[1] || '';
+
+      if (balise[1] === '/') {
+        // On remonte jusqu'à l'élément correspondant, pour survivre
+        // à une balise mal refermée sans dérégler toute la pile.
+        for (let k = pile.length - 1; k >= 0; k--) {
+          if (pile[k].nom.toLowerCase() === nom.toLowerCase()) { pile.length = k; break; }
+        }
+      } else if (!balise.endsWith('/>') && !SEULES.test(nom)) {
+        pile.push({ nom, marque: /\sdata-t/.test(balise) });
+      }
+      i = ferme + 1;
+    }
+    return trouves;
+  })();
+  verifier('★ aucune phrase française laissée en dur dans la page', durs, []);
+
+  /* ─── Le hadith du jour suit la langue ─── */
+  const carte = app.match(/const EDITIONS = \{([^}]*)\}/);
+  vrai('chaque langue a son édition de hadiths',
+    !!carte && CODES.every(c => new RegExp('\\b' + c + ':').test(carte[1])));
+  vrai('★ la réserve hors-ligne suit elle aussi la langue',
+    /function reserveHadiths\(\)/.test(app) &&
+    /HADITH_SECOURS_EN/.test(app));
+  vrai('la réserve anglaise contient bien les 42 hadiths',
+    (lire('hadith-secours-en.js').match(/^  \{ text:/gm) || []).length === 42);
+
+  /* ─── Le choix de la langue ─── */
+  vrai('le réglage de langue existe dans la page', /id="set-langue"/.test(html));
+  vrai('★ changer de langue recharge la page — rien ne reste dans l\'ancienne',
+    /function brancherLangue\(\)[\s\S]{0,900}?location\.reload\(\)/.test(app));
+  vrai('★ et le carnet est rangé AVANT de recharger',
+    /function brancherLangue\(\)[\s\S]{0,900}?sauverDouble\(true\)[\s\S]{0,120}?location\.reload\(\)/.test(app));
+  vrai('la langue du téléphone est suivie tant que personne n\'a choisi',
+    /function devinee\(\)/.test(textes) && /navigator\.languages/.test(textes));
+
+  /* ─── La bibliothèque s'ouvre au bon endroit dans toutes les langues ───
+     « Morning adhkar » ne tombait sur rien : les mots cherchés étaient
+     tous français, et la bibliothèque s'ouvrait toujours sur la première
+     catégorie. Trouvé le 22 août 2026, avant la mise en ligne. */
+  const mots = app.match(/const MOTS_CATEGORIE = \[([\s\S]*?)\n\];/);
+  vrai('les mots qui devinent la catégorie sont trouvés', !!mots);
+  vrai('★ ils existent aussi en anglais',
+    !!mots && /'morning'/.test(mots[1]) && /'evening'/.test(mots[1])
+           && /'prayer'/.test(mots[1]) && /'sleep'/.test(mots[1]));
+
+  /* ─── Les paquets du premier jour ─────────────────────────
+     ★ Le 22 août 2026, ces cinq paquets ont affiché « undefined »
+     sur le tout premier écran de l'application, en anglais : le code
+     lisait encore p.nom et p.desc alors que les paquets ne portaient
+     plus qu'une clé. Aucune erreur, aucun plantage — juste cinq
+     « undefined » devant la personne qui découvre l'appli. */
+  const paquets = app.match(/const PACKS = \[([\s\S]*?)\n\];/);
+  vrai('la liste des paquets est trouvée', !!paquets);
+  // La clé du paquet suit son icône ; celles des intentions ouvrent
+  // une accolade. Sans cette distinction, le test mélangeait les deux.
+  const clesPacks = paquets
+    ? [...paquets[1].matchAll(/ico: '[^']*',\s*cle: '([^']+)'/g)].map(m => m[1]) : [];
+  vrai('chaque paquet a sa clé', clesPacks.length === 5);
+  verifier('★ chaque paquet a son nom dans toutes les langues',
+    clesPacks.filter(c => !MOTS.TEXTES[c + '.nom']), []);
+  verifier('★ chaque paquet a sa description dans toutes les langues',
+    clesPacks.filter(c => !MOTS.TEXTES[c + '.desc']), []);
+  faux('★ l\'affichage ne lit plus p.nom ni p.desc — ils n\'existent plus',
+    /\$\{p\.nom\}|\$\{p\.desc\}|echapper\(p\.nom\)/.test(app));
+
+  // Et les intentions que ces paquets créent doivent, elles aussi,
+  // avoir un nom dans chaque langue.
+  const clesTaches = paquets
+    ? [...paquets[1].matchAll(/\{ cle: '([^']+)'/g)].map(m => m[1]) : [];
+  vrai('les intentions des paquets ont leurs clés', clesTaches.length >= 7);
+  verifier('★ chaque intention créée par un paquet est traduite',
+    clesTaches.filter(c => !MOTS.TEXTES[c]), []);
+
+  /* ─── Le garde-fou du contenu religieux ───────────────────
+     ★ LE TEST LE PLUS IMPORTANT DU GROUPE.
+     Les 26 invocations sont relues EN FRANÇAIS. Les traductions ne
+     l'ont été par personne. Si « verifie_en » passait à true sans
+     relecture — par distraction, ou en recopiant une ligne — l'appli
+     présenterait un sens non relu comme validé, en silence. */
+  const biblio = chargerAdhkar().ADHKAR;
+
+  verifier('★ AUCUNE traduction n\'est déclarée relue',
+    biblio.filter(d => d.verifie_en === true).map(d => d.id), []);
+  verifier('les 26 invocations sont toujours relues en français',
+    biblio.filter(d => d.verifie !== true).map(d => d.id), []);
+
+  verifier('chaque invocation a son titre anglais',
+    biblio.filter(d => !d.nom_en).map(d => d.id), []);
+  verifier('chaque invocation a son sens anglais',
+    biblio.filter(d => !d.traduction_en).map(d => d.id), []);
+  verifier('chaque invocation a sa source anglaise',
+    biblio.filter(d => !d.source_en).map(d => d.id), []);
+
+  // Une traduction qui recopie le français n'est pas une traduction.
+  verifier('★ aucune traduction n\'est restée en français',
+    biblio.filter(d => d.traduction_en === d.traduction).map(d => d.id), []);
+
+  // L'arabe et la phonétique ne se traduisent pas : ils sont relus,
+  // et une « version anglaise » de l'arabe n'aurait aucun sens.
+  verifier('★ l\'arabe n\'a pas de version traduite',
+    biblio.filter(d => d.arabe_en || d.phonetique_en).map(d => d.id), []);
+
+  /* Et le code doit juger « relu » DANS LA LANGUE AFFICHÉE : c'est ce
+     qui empêche l'avertissement de sauter en changeant de langue. */
+  vrai('★ « relu » se juge dans la langue affichée',
+    /function dhikrRelu\(d\)[\s\S]{0,400}?verifie_' \+ code/.test(textes));
+  /* ⚠️ Cette vérification ne regardait QUE app.js. feuille.js avait sa
+     propre copie de la règle — « ADHKAR.every(d => d.verifie) » — et
+     elle est passée entre les mailles : en anglais, le bandeau se
+     cachait tout seul dès que la feuille Google arrivait. On regarde
+     donc désormais TOUS les fichiers qui touchent au bandeau. */
+  const juges = ['app.js', 'feuille.js']
+    .filter(f => /\.every\(d => d\.verifie\)|\.hidden = !!d\.verifie/.test(lire(f)));
+  verifier('★ aucun fichier ne juge « relu » sur le seul champ français', juges, []);
+  vrai('★ feuille.js juge lui aussi dans la langue affichée',
+    /dhikrRelu/.test(lire('feuille.js')));
 }
 
 

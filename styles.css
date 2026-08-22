@@ -198,6 +198,27 @@ body {
   font-variant-numeric: tabular-nums; color: var(--muted);
 }
 
+/* ─── Choix de la langue ─────────────────────────────────
+   Une liste déroulante du système : c'est le seul endroit de
+   l'application où on la laisse telle quelle. Elle sait déjà
+   s'ouvrir en grand sur un téléphone, et la refaire à la main
+   ferait perdre ce que le téléphone fait mieux que nous. */
+.select {
+  flex: none; max-width: 46%;
+  padding: 8px 30px 8px 12px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--surface);
+  color: var(--text); font: inherit; font-size: 14px; line-height: 1.2;
+  cursor: pointer;
+  /* La flèche du système disparaît sur certains Android : on dessine
+     la nôtre, pour qu'on voie toujours que ça s'ouvre. */
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 15px 15px;
+}
+.select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 /* ─── Titres de section ──────────────────────────────── */
 .section-title {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;

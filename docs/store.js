@@ -25,11 +25,13 @@ const Store = (function () {
 
   const PRIERES  = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
   const FENETRE  = 30;                      // la régularité se mesure sur 30 jours
+  /* Les mots viennent de textes.js. Ils sont lus une fois, au chargement :
+     changer de langue recharge la page, donc ils sont toujours à jour. */
   const FREQUENCE = {
-    daily:   'Chaque jour',
-    weekly:  'Chaque semaine',
-    monthly: 'Chaque mois',
-    once:    'Une fois'
+    daily:   T('freq.daily'),
+    weekly:  T('freq.weekly'),
+    monthly: T('freq.monthly'),
+    once:    T('freq.once')
   };
 
   /* ─── 1. Les dates ──────────────────────────────────────
@@ -117,11 +119,7 @@ const Store = (function () {
      ferait commettre une erreur dans une adoration — c'est autrement
      plus grave qu'un défaut d'affichage. */
 
-  const MOIS_HEGIRIENS = [
-    'Mouharram', 'Safar', 'Rabi\' al-Awwal', 'Rabi\' ath-Thani',
-    'Joumada al-Oula', 'Joumada ath-Thania', 'Rajab', 'Cha\'ban',
-    'Ramadan', 'Chawwal', 'Dhou al-Qi\'da', 'Dhou al-Hijja'
-  ];
+  const MOIS_HEGIRIENS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => T('hijri.' + n));
 
   const DECALAGE_MAX = 2;   // au-delà, ce n'est plus un ajustement
 
@@ -652,7 +650,7 @@ const Store = (function () {
     return { prevus, faits, pourcent: prevus ? Math.round(faits / prevus * 100) : 0 };
   }
 
-  const LETTRES = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+  const LETTRES = [0, 1, 2, 3, 4, 5, 6].map(n => T('lettre.' + n));
 
   function septDerniersJours() {
     const fin = aujourdhui();
@@ -769,7 +767,7 @@ const Store = (function () {
   }
 
   /* Libellé lisible : « Chaque semaine » seul ne dit pas quel jour. */
-  const JOURS_LONGS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const JOURS_LONGS = [0, 1, 2, 3, 4, 5, 6].map(n => T('jour.long.' + n));
 
   function libelleFrequence(t) {
     switch (t.frequence) {
@@ -777,10 +775,10 @@ const Store = (function () {
         const j = (t.jourSemaine === undefined || t.jourSemaine === null)
           ? dateDepuisCle(t.creeeLe).getDay()
           : t.jourSemaine;
-        return 'Chaque ' + JOURS_LONGS[j];
+        return T('freq.chaque') + JOURS_LONGS[j];
       }
       case 'monthly':
-        return 'Chaque mois le ' + dateDepuisCle(t.creeeLe).getDate();
+        return T('freq.chaquemois') + dateDepuisCle(t.creeeLe).getDate();
       default:
         return FREQUENCE[t.frequence] || FREQUENCE.daily;
     }
@@ -847,7 +845,7 @@ const Store = (function () {
   function restaurerAncienCarnet() {
     const trouve = ancienCarnet();
     if (!trouve) {
-      return { ok: false, raison: 'Aucun carnet d\'une version précédente sur cet appareil.' };
+      return { ok: false, raison: T('store.nocarnet') };
     }
     try {
       const brut   = JSON.parse(localStorage.getItem(trouve.cle));
@@ -857,7 +855,7 @@ const Store = (function () {
       sauver();
       return { ok: true, resume: resumeDe(etat) };
     } catch (e) {
-      return { ok: false, raison: 'Ce carnet n\'a pas pu être relu.' };
+      return { ok: false, raison: T('store.illisible') };
     }
   }
 
@@ -903,7 +901,7 @@ const Store = (function () {
     const refus = raison => ({ ok: false, raison: raison });
 
     if (!fichier || typeof fichier !== 'object' || Array.isArray(fichier)) {
-      return refus("Ce fichier n'est pas une sauvegarde Ibadah.");
+      return refus(T('store.paslasauv'));
     }
 
     // On accepte le fichier complet comme le carnet seul : quelqu'un qui
@@ -913,13 +911,13 @@ const Store = (function () {
 
     if (!Array.isArray(d.taches) || !d.journal || typeof d.journal !== 'object'
         || Array.isArray(d.journal)) {
-      return refus("Ce fichier n'est pas une sauvegarde Ibadah.");
+      return refus(T('store.paslasauv'));
     }
 
     // Une sauvegarde écrite par une version future : on refuse plutôt que
     // de deviner, sinon on risquerait d'écraser du bon avec du mal compris.
     if (fichier.format && Number(fichier.format) > 1) {
-      return refus('Cette sauvegarde vient d\'une version plus récente de l\'application.');
+      return refus(T('store.troprecente'));
     }
 
     // Avec « verifierSeulement », on regarde sans toucher : l'écran peut
@@ -946,14 +944,14 @@ const Store = (function () {
     etat.accueilli = true;
 
     const modeles = [
-      { nom: 'Lire une page de Coran',      frequence: 'daily',  heure: '07:30' },
-      { nom: 'Adhkar du matin',             frequence: 'daily',  heure: '08:00',
-        sous: ['Ayat al-Kursi', 'Sourates protectrices', 'Sayyid al-istighfar',
-               'Subhan Allah wa bi hamdih', 'Salat sur le Prophète'] },
-      { nom: 'Adhkar du soir',              frequence: 'daily',  heure: '18:30' },
-      { nom: 'Apprendre un nouveau hadith', frequence: 'daily',  heure: '21:00' },
-      { nom: 'Faire une aumône (sadaqa)',   frequence: 'weekly', heure: '' },
-      { nom: 'Appeler mes parents',         frequence: 'weekly', heure: '19:00' }
+      { nom: T('demo.t.coran'),  frequence: 'daily',  heure: '07:30' },
+      { nom: T('demo.t.matin'),  frequence: 'daily',  heure: '08:00',
+        sous: ['Ayat al-Kursi', T('demo.d.protect'), 'Sayyid al-istighfar',
+               'Subhan Allah wa bi hamdih', T('demo.d.salat')] },
+      { nom: T('demo.t.soir'),    frequence: 'daily',  heure: '18:30' },
+      { nom: T('demo.t.hadith'),  frequence: 'daily',  heure: '21:00' },
+      { nom: T('demo.t.sadaqa'),  frequence: 'weekly', heure: '' },
+      { nom: T('demo.t.parents'), frequence: 'weekly', heure: '19:00' }
     ];
 
     const depart = cleDecalee(aujourdhui(), -11);

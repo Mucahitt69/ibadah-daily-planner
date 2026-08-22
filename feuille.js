@@ -185,8 +185,21 @@ function feuilleRafraichirEcran() {
   const boite = document.getElementById('biblio');
   if (!boite || boite.hidden) return;
 
+  /* ⚠️ Ce bandeau se décidait ici sur le seul champ « verifie » —
+     c'est-à-dire sur le français. En anglais, où le SENS n'a été relu
+     par personne, il se serait donc caché tout seul dès que la feuille
+     Google arrivait, alors qu'il devait rester. On juge « relu » dans
+     la langue affichée, exactement comme le fait ouvrirBiblio(). */
   const warn = document.getElementById('biblio-warn');
-  if (warn && typeof ADHKAR !== 'undefined') warn.hidden = ADHKAR.every(d => d.verifie);
+  if (warn && typeof ADHKAR !== 'undefined' && typeof dhikrRelu === 'function') {
+    const traductionEnCause = ADHKAR.some(dhikrTraductionNonRelue);
+    warn.hidden = ADHKAR.every(dhikrRelu);
+
+    const titre = document.getElementById('biblio-warn-titre');
+    const texte = document.getElementById('biblio-warn-texte');
+    if (titre) titre.textContent = T(traductionEnCause ? 'biblio.warn.titre.trad' : 'biblio.warn.titre');
+    if (texte) texte.textContent = T(traductionEnCause ? 'biblio.warn.texte.trad' : 'biblio.warn.texte');
+  }
 
   if (typeof afficherBiblioCats === 'function') afficherBiblioCats();
   if (typeof afficherBiblio     === 'function') afficherBiblio();

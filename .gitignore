@@ -49,3 +49,6 @@ desktop.ini
 # apparu (relecture-hadiths-entiers.docx) et serait parti sur GitHub tout seul.
 # Ces fichiers portent des textes religieux NON RELUS -- voir le blocage n° 3.
 relecture-*
+# Et les fichiers verrous que LibreOffice pose a cote d'un document ouvert :
+# ils portent le nom du document dans le leur, et « relecture-* » ne les attrape pas.
+.~lock.*

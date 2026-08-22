@@ -29,6 +29,18 @@ function dhikrDeLaBiblio(ref) {
   return ref ? (BIBLIO.find(d => d.id === ref) || null) : null;
 }
 
+/* Le nom d'un dhikr posé dans une intention.
+
+   Un dhikr VENU DE LA BIBLIOTHÈQUE reprend le nom de la bibliothèque,
+   dans la langue affichée : ajouté en français puis relu en anglais,
+   il ne doit pas rester « Ayat al-Kursi » en un seul français au milieu
+   d'un écran anglais. Un dhikr écrit à la main, lui, garde exactement
+   les mots de la personne — on ne traduit jamais ce qu'elle a écrit. */
+function nomDuSous(s) {
+  const d = dhikrDeLaBiblio(s.refBiblio);
+  return d ? champDhikr(d, 'nom') : s.nom;
+}
+
 // Quelles intentions sont dépliées à l'écran. Volontairement non sauvegardé :
 // chaque jour on repart d'une liste refermée, donc lisible.
 const depliees = new Set();
@@ -135,12 +147,12 @@ function poserQuestion({ titre, texte, ok, annuler, danger }) {
 
 /* Demander avant l'irréparable. Rend vrai ou faux. */
 function demander(options) {
-  return poserQuestion({ ok: 'Continuer', annuler: 'Annuler', danger: true, ...options });
+  return poserQuestion({ ok: T('ask.continuer'), annuler: T('ask.annuler'), danger: true, ...options });
 }
 
 /* Simplement prévenir : un seul bouton, rien à décider. */
 function prevenir(options) {
-  return poserQuestion({ ok: 'J\'ai compris', annuler: '', danger: false, ...options });
+  return poserQuestion({ ok: T('ask.compris'), annuler: '', danger: false, ...options });
 }
 
 /* ─── Petit message de félicitation ─────────────────────── */
@@ -153,23 +165,17 @@ function toast(msg) {
   minuteurToast = setTimeout(() => { t.hidden = true; }, 2600);
 }
 
-const ENCOURAGEMENTS = [
-  'Alhamdoulillah, c\'est fait ✨',
-  'Barak Allahu fik, continue ainsi',
-  'Un pas de plus, qu\'Allah l\'accepte',
-  'Ma sha Allah, belle constance',
-  'Petit à petit, régulièrement — c\'est ce qu\'Allah aime'
-];
+const ENCOURAGEMENTS = [0, 1, 2, 3, 4].map(n => T('toast.' + n));
 
 /* ─── Écran « Aujourd'hui » ─────────────────────────────── */
 function afficherDate() {
   const d = Store.dateDepuisCle(JOUR);
-  $('#today-date').textContent = d.toLocaleDateString('fr-FR', {
+  $('#today-date').textContent = d.toLocaleDateString(Langue.locale(), {
     weekday: 'long', day: 'numeric', month: 'long'
   });
   // Petit bandeau visible seulement quand on simule une autre date (tests)
   if (Store.jourSimule()) {
-    $('#today-date').textContent += ' — jour simulé';
+    $('#today-date').textContent += T('today.simule');
   }
 
   // La date hégirienne se tait si le navigateur ne sait pas la calculer :
@@ -189,8 +195,8 @@ function afficherReglageHegire() {
 
   $('#hijri-value').textContent = d > 0 ? `+${d}` : String(d);
   $('#hijri-help').textContent  = h
-    ? `Aujourd'hui : ${h.texte}`
-    : 'Non disponible sur ce navigateur';
+    ? T('set.hijri.aujourd', { date: h.texte })
+    : T('set.hijri.non');
 
   // On ne propose pas d'aller au-delà de ce qui a un sens.
   $('#hijri-minus').disabled = d <= -Store.DECALAGE_MAX;
@@ -213,11 +219,11 @@ function afficherPrieres() {
     b.className = 'prayer' + (faite ? ' is-on' : '');
     b.type = 'button';
     b.setAttribute('aria-pressed', faite);
-    b.setAttribute('aria-label', nom + (faite ? ' : accomplie' : ' : à accomplir'));
+    b.setAttribute('aria-label', T(faite ? 'today.priere.faite' : 'today.priere.afaire', { nom }));
     b.innerHTML = `<span class="prayer__dot">${CHECK_SVG}</span><span class="prayer__name">${nom}</span>`;
     b.addEventListener('click', () => {
       const cochee = Store.basculerPriere(nom, JOUR);
-      if (cochee) toast(`${nom} accomplie — qu'Allah l'accepte 🤍`);
+      if (cochee) toast(T('today.priere.bravo', { nom }));
       afficherPrieres();
       afficherEnTete();
       // Une prière cochée ne change aucun rappel, mais elle change le
@@ -229,7 +235,9 @@ function afficherPrieres() {
 
   const reste = Store.PRIERES.filter(p => !Store.priereFaite(p, JOUR)).length;
   $('#prayers-left').textContent =
-    reste === 0 ? 'Toutes accomplies 🤍' : reste === 1 ? '1 restante' : reste + ' restantes';
+    reste === 0 ? T('today.prieres.toutes')
+  : reste === 1 ? T('today.prieres.une')
+  :               T('today.prieres.reste', { n: reste });
 }
 
 /* Rassemble les intentions déjà triées en paquets de même rythme.
@@ -257,7 +265,7 @@ function remplirParGroupes(liste, taches, faites) {
     if (groupes.length > 1) {
       const titre = document.createElement('p');
       titre.className = 'groupe-titre';
-      titre.textContent = Store.FREQUENCE[g.frequence] || 'Autres';
+      titre.textContent = Store.FREQUENCE[g.frequence] || T('today.groupe.autres');
       liste.appendChild(titre);
     }
     g.taches.forEach(t => liste.appendChild(ligneTache(t, faites)));
@@ -278,16 +286,14 @@ function afficherTaches() {
   remplirParGroupes(listeFaites, faites, true);
 
   $('#tasks-empty').hidden      = aFaire.length > 0;
-  $('#tasks-count').textContent = aFaire.length ? `${aFaire.length} à faire` : '';
+  $('#tasks-count').textContent = aFaire.length ? T('today.taches.reste', { n: aFaire.length }) : '';
   $('#done-block').hidden       = faites.length === 0;
   $('#done-count').textContent  = faites.length;
 
   // Texte de l'état vide : différent si la journée est finie ou si tout est à créer
   const rienDeCree = Store.toutesLesTaches().length === 0;
-  $('#empty-title').textContent = rienDeCree ? 'Ta journée est libre' : 'Tout est accompli 🤍';
-  $('#empty-text').innerHTML    = rienDeCree
-    ? 'Ajoute une première intention.<br>Même une seule, faite avec sincérité, compte.'
-    : 'Tu as terminé tes intentions du jour.<br>Qu\'Allah les accepte de toi.';
+  $('#empty-title').textContent = T(rienDeCree ? 'today.vide.titre' : 'today.fini.titre');
+  $('#empty-text').innerHTML    = T(rienDeCree ? 'today.vide.texte' : 'today.fini.texte');
 
   afficherEnTete();
 }
@@ -308,7 +314,7 @@ function ligneTache(t, faite) {
     </span>`;
 
   const plus = `
-    <button class="task__more" aria-label="Options pour ${echapper(t.nom)}">
+    <button class="task__more" aria-label="${echapper(T('tache.options', { nom: t.nom }))}">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>
       </svg>
@@ -319,7 +325,7 @@ function ligneTache(t, faite) {
     li.innerHTML = `
       <div class="task__ligne">
         <button class="task__hit" aria-pressed="${faite}"
-                aria-label="${echapper(t.nom)}${faite ? ' : terminée' : ' : à faire'}">
+                aria-label="${echapper(T(faite ? 'tache.terminee' : 'tache.afaire', { nom: t.nom }))}">
           <span class="check">${CHECK_SVG}</span>
           ${corps}
         </button>
@@ -337,11 +343,11 @@ function ligneTache(t, faite) {
     li.innerHTML = `
       <div class="task__ligne">
         <button class="task__check" aria-pressed="${faite}"
-                aria-label="${faite ? 'Tout décocher' : 'Tout cocher'} : ${echapper(t.nom)}">
+                aria-label="${T(faite ? 'tache.toutdecocher' : 'tache.toutcocher')} : ${echapper(t.nom)}">
           <span class="check">${CHECK_SVG}</span>
         </button>
         <button class="task__hit task__hit--groupe" aria-expanded="${ouverte}" aria-controls="${idListe}"
-                aria-label="${echapper(t.nom)} : ${av.faits} sur ${av.total}, ouvrir la liste">
+                aria-label="${echapper(T('tache.ouvrir', { nom: t.nom, faits: av.faits, total: av.total }))}">
           ${corps}
           <span class="task__prog">${av.faits} / ${av.total}</span>
           ${CHEV_SVG}
@@ -383,12 +389,13 @@ function remplirSous(ul, t, liParent) {
     // L'état ne va PAS dans le nom : il est porté par aria-pressed, qui lui
     // se met à jour au moment du clic. Un nom qui dirait « à faire » resterait
     // faux dès la première coche.
+    const nom = nomDuSous(s);
     li.innerHTML = `
-      <button class="sub__coche" aria-pressed="${fait}" aria-label="${echapper(s.nom)}">
+      <button class="sub__coche" aria-pressed="${fait}" aria-label="${echapper(nom)}">
         <span class="sub__rond">${CHECK_SVG}</span>
       </button>
-      <button class="sub__hit" aria-label="${d ? 'Lire le texte : ' + echapper(s.nom) : echapper(s.nom)}">
-        <span class="sub__nom">${echapper(s.nom)}</span>
+      <button class="sub__hit" aria-label="${d ? echapper(T('tache.lire', { nom })) : echapper(nom)}">
+        <span class="sub__nom">${echapper(nom)}</span>
         <span class="sub__fois">${s.repetitions > 1 ? s.repetitions + '×' : ''}</span>
         ${d ? FLECHE_SVG : ''}
       </button>`;
@@ -406,7 +413,7 @@ function remplirSous(ul, t, liParent) {
   ajout.innerHTML = `
     <button class="sub__ajout">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-      Ajouter un dhikr
+      ${T('tache.ajoutdhikr')}
     </button>`;
   ajout.querySelector('.sub__ajout').addEventListener('click', () => ouvrirBiblio(t));
   ul.appendChild(ajout);
@@ -425,7 +432,7 @@ function basculerSous(t, s, liSous, liParent) {
   if (apres && !avant) {
     depliees.delete(t.id);
     liParent.classList.add('is-done');
-    toast(`${t.nom} : tout est accompli 🤍`);
+    toast(T('tache.complete', { nom: t.nom }));
     setTimeout(() => liParent.classList.add('is-leaving'), 340);
     setTimeout(afficherTaches, 700);
     return;
@@ -439,7 +446,7 @@ function basculerSous(t, s, liSous, liParent) {
   const av = Store.avancement(t, JOUR);
   liParent.querySelector('.task__prog').textContent = `${av.faits} / ${av.total}`;
   liParent.querySelector('.task__hit').setAttribute('aria-label',
-    `${t.nom} : ${av.faits} sur ${av.total}, ouvrir la liste`);
+    T('tache.ouvrir', { nom: t.nom, faits: av.faits, total: av.total }));
   afficherEnTete();
 }
 
@@ -466,35 +473,37 @@ function afficherEnTete() {
   const p = Store.progression(JOUR);
 
   $('#ring-percent').textContent = p.pourcent + '%';
-  $('#ring-sub').textContent     = `${p.faits} / ${p.total} accomplis`;
+  $('#ring-sub').textContent     = T('today.ring.compte', { faits: p.faits, total: p.total });
   $('#ring-fill').style.strokeDashoffset = 327 - (327 * p.pourcent / 100);
   $('#ring').setAttribute('aria-label',
-    `Progression du jour : ${p.pourcent} pour cent, ${p.faits} sur ${p.total}`);
+    T('today.ring.detail', { pourcent: p.pourcent, faits: p.faits, total: p.total }));
 
   $('#hero-streak').textContent     = Store.serie();
   $('#hero-regularite').textContent = Store.regulariteGlobale().pourcent + ' %';
 
-  $('#hero-msg').textContent =
-    p.pourcent === 0  ? 'Une nouvelle journée t\'est offerte.' :
-    p.pourcent < 40   ? 'Tu as commencé, c\'est le plus important.' :
-    p.pourcent < 80   ? 'Belle avancée, continue tranquillement.' :
-    p.pourcent < 100  ? 'Presque tout est accompli, ma sha Allah.' :
-                        'Journée complète — qu\'Allah accepte de toi 🤍';
+  $('#hero-msg').textContent = T(
+    p.pourcent === 0  ? 'today.msg.0' :
+    p.pourcent < 40   ? 'today.msg.1' :
+    p.pourcent < 80   ? 'today.msg.2' :
+    p.pourcent < 100  ? 'today.msg.3' :
+                        'today.msg.4');
 }
 
 /* ─── Écran « Progrès » ─────────────────────────────────────
    Aucun point nulle part : on ne mesure que la constance. */
 
 const BADGES = [
-  { ico: '🌱', nom: '7 jours d\'affilée',          gagne: c => c.meilleure >= 7 },
-  { ico: '🌳', nom: '30 jours d\'affilée',         gagne: c => c.meilleure >= 30 },
-  { ico: '🏔️', nom: '60 jours d\'affilée',         gagne: c => c.meilleure >= 60 },
-  { ico: '🕌', nom: 'Fajr tenu tout un mois',      gagne: c => c.fajr.prevus >= 28 && c.fajr.pourcent === 100 },
-  { ico: '🤍', nom: 'Une intention tenue 40 fois', gagne: c => c.fidelite >= 40 },
-  { ico: '📖', nom: '10 journées entières',        gagne: c => c.completes >= 10 }
+  { ico: '🌱', cle: 'badge.7j',   gagne: c => c.meilleure >= 7 },
+  { ico: '🌳', cle: 'badge.30j',  gagne: c => c.meilleure >= 30 },
+  { ico: '🏔️', cle: 'badge.60j',  gagne: c => c.meilleure >= 60 },
+  { ico: '🕌', cle: 'badge.fajr', gagne: c => c.fajr.prevus >= 28 && c.fajr.pourcent === 100 },
+  { ico: '🤍', cle: 'badge.40',   gagne: c => c.fidelite >= 40 },
+  { ico: '📖', cle: 'badge.10',   gagne: c => c.completes >= 10 }
 ];
 
-const LETTRES_SEMAINE = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+/* L'en-tete de la grille commence LUNDI (voir store.grilleDuMois),
+   d'ou l'ordre 1..6 puis 0. */
+const LETTRES_SEMAINE = [1, 2, 3, 4, 5, 6, 0].map(n => T('lettre.' + n));
 
 function afficherStats() {
   const serie = Store.serie();
@@ -521,7 +530,7 @@ function afficherStats() {
   $('#badges').innerHTML = BADGES.map(b => `
     <div class="badge ${b.gagne(contexte) ? 'is-won' : ''}">
       <span class="badge__ico" aria-hidden="true">${b.ico}</span>
-      <span class="badge__name">${b.nom}</span>
+      <span class="badge__name">${echapper(T(b.cle))}</span>
     </div>`).join('');
 }
 
@@ -539,14 +548,14 @@ function afficherGraphique() {
     </div>`).join('');
 
   $('#chart').setAttribute('aria-label',
-    'Part de la journée accomplie sur 7 jours : ' +
-    jours.map(j => `${j.lettre} ${j.part} pour cent`).join(', '));
+    T('stats.sept.detail') +
+    jours.map(j => T('stats.sept.jour', { lettre: j.lettre, part: j.part })).join(', '));
 }
 
 function afficherMois() {
   const cases = Store.grilleDuMois();
   const d = Store.dateDepuisCle(JOUR);
-  $('#month-name').textContent = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  $('#month-name').textContent = d.toLocaleDateString(Langue.locale(), { month: 'long', year: 'numeric' });
 
   const entete = LETTRES_SEMAINE
     .map(l => `<div class="month__tete" aria-hidden="true">${l}</div>`).join('');
@@ -565,7 +574,7 @@ function afficherMois() {
 
   const faits = cases.filter(c => c && c.part > 0).length;
   $('#month').setAttribute('aria-label',
-    `Grille du mois : ${faits} jours où quelque chose a été accompli.`);
+    T('stats.mois.detail', { n: faits }));
 }
 
 function afficherRegularites() {
@@ -578,7 +587,7 @@ function afficherRegularites() {
     <div class="reg">
       <span class="reg__nom">${echapper(x.t.nom)}</span>
       <span class="reg__barre" role="img"
-            aria-label="${x.r.faits} fois sur ${x.r.prevus} jours prévus">
+            aria-label="${T('stats.chaque.aria', { faits: x.r.faits, prevus: x.r.prevus })}">
         <span class="reg__jauge" style="width:${x.r.pourcent}%"></span>
       </span>
       <span class="reg__val">${x.r.faits} / ${x.r.prevus}</span>
@@ -690,9 +699,24 @@ const HADITH_SECOURS = [
    Ajouter un recueil ici sans l'ajouter là ferait réapparaître des textes
    non relus dès que le téléphone retrouve du réseau. */
 const CDN = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
+/* Une édition par langue. Le titre, lui, vient de textes.js.
+   ⚠️ Toute édition ajoutée ici doit avoir sa réserve hors-ligne dans
+   RESERVE ci-dessous — sinon l'application resterait muette sans réseau. */
+const EDITIONS = { fr: 'fra-nawawi', en: 'eng-nawawi' };
 const RECUEILS = [
-  { edition: 'fra-nawawi', nombre: 42, titre: 'Les 40 hadiths de an-Nawawi' }
+  { edition: EDITIONS[Langue.choisie()] || EDITIONS.fr,
+    nombre: 42,
+    titre: T('hadith.collection') }
 ];
+
+/* La réserve hors-ligne de la langue affichée. Si une langue n'en a
+   pas encore, on retombe sur la française plutôt que sur du vide. */
+function reserveHadiths() {
+  if (Langue.choisie() === 'en' && typeof HADITH_SECOURS_EN !== 'undefined') {
+    return HADITH_SECOURS_EN;
+  }
+  return HADITH_SECOURS;
+}
 
 function numeroDuJour() {
   return Math.floor(Store.dateDepuisCle(JOUR).getTime() / 86400000);
@@ -760,7 +784,7 @@ async function chargerHadith(auHasard = false) {
          source renverrait un chapitre entier par erreur. */
       if (txt.length > 6000) txt = txt.slice(0, 6000).replace(/\S+$/, '').trim() + '…';
 
-      const item = { text: txt, source: `${c.titre} — n° ${h.hadithnumber}`, note: '', enLigne: true };
+      const item = { text: txt, source: T('hadith.numero', { titre: c.titre, n: h.hadithnumber }), note: '', enLigne: true };
       ecrireCache(c.edition + '/' + n, item);
       montrerHadith(item);
       return;
@@ -768,9 +792,10 @@ async function chargerHadith(auHasard = false) {
   }
 
   // Aucune source en ligne n'a répondu → réserve locale
-  const f = HADITH_SECOURS[auHasard
-    ? Math.floor(Math.random() * HADITH_SECOURS.length)
-    : numeroDuJour() % HADITH_SECOURS.length];
+  const reserve = reserveHadiths();
+  const f = reserve[auHasard
+    ? Math.floor(Math.random() * reserve.length)
+    : numeroDuJour() % reserve.length];
   montrerHadith(Object.assign({ enLigne: false }, f));
 }
 
@@ -784,9 +809,8 @@ function montrerHadith(h) {
      phrases sont donc les dernières de l'appli à porter un avertissement,
      et elles doivent le dire au présent. Voir le blocage nº 3 du HANDOFF. */
   let note = h.note ? `<p style="margin:0">${echapper(h.note)}</p>` : '';
-  note += h.enLigne
-    ? '<p class="hadith__warn">Texte récupéré automatiquement en ligne : cette traduction n\'a été relue par personne. Vérifie-la auprès de quelqu\'un de confiance avant de t\'y fier.</p>'
-    : '<p class="hadith__warn">Pas de connexion : hadith affiché depuis la réserve de l\'application. Ce texte n\'a pas été relu non plus.</p>';
+  note += '<p class="hadith__warn">' +
+    echapper(T(h.enLigne ? 'hadith.warn.enligne' : 'hadith.warn.reserve')) + '</p>';
 
   $('#hadith-note').innerHTML = note;
   $('#hadith-loading').hidden = true;
@@ -825,20 +849,15 @@ function replierLeHadith(remettreAZero) {
                          : !bouton.hidden;
 
   bouton.hidden = !deborde;
-  bouton.textContent = replie ? 'Voir plus' : 'Voir moins';
+  bouton.textContent = T(replie ? 'hadith.plus' : 'hadith.moins');
   bouton.setAttribute('aria-expanded', replie ? 'false' : 'true');
 }
 
-const INFOS = [
-  { tag: 'Rappel',     text: 'Le jeûne du lundi et du jeudi est une sunna régulière du Prophète ﷺ.' },
-  { tag: 'Calendrier', text: 'Les jours blancs (13, 14, 15 du mois hégirien) approchent — pense à les noter.' },
-  { tag: 'Conseil',    text: 'Place tes adhkar du matin juste après la prière du Fajr : le geste devient automatique.' },
-  { tag: 'Communauté', text: 'Une aumône, même petite, chaque vendredi : c\'est une habitude simple à tenir.' }
-];
+const INFOS = ['rappel', 'calendrier', 'conseil', 'communaute'];
 
 function afficherInfos() {
   $('#info-list').innerHTML = INFOS.map(i =>
-    `<li><b>${i.tag}</b>${echapper(i.text)}</li>`).join('');
+    `<li><b>${echapper(T('infos.' + i + '.tag'))}</b>${echapper(T('infos.' + i))}</li>`).join('');
 }
 
 /* ─── Feuille « Ajouter / Modifier une intention » ──────── */
@@ -849,8 +868,8 @@ let tacheEnEdition   = null;
 function ouvrirFeuille(t) {
   tacheEnEdition = t || null;
 
-  $('#sheet-title').textContent  = t ? 'Modifier l\'intention' : 'Nouvelle intention';
-  $('#sheet-submit').textContent = t ? 'Enregistrer' : 'Ajouter';
+  $('#sheet-title').textContent  = T(t ? 'sheet.titre.edit' : 'sheet.titre.new');
+  $('#sheet-submit').textContent = T(t ? 'sheet.enregistrer' : 'sheet.ajouter');
   $('#f-name').value = t ? t.nom : '';
   $('#f-time').value = t ? t.heure : '';
   majNoteNuit();
@@ -933,8 +952,14 @@ function ouvrirBiblio(t) {
 
   biblioCat = categoriePour(t);
   $('#biblio-for').textContent = t.nom;
-  // Le bandeau ne s'affiche que s'il reste au moins un texte non relu.
-  $('#biblio-warn').hidden = BIBLIO.every(d => d.verifie);
+  // Le bandeau ne s'affiche que s'il reste au moins un texte non relu —
+  // et « relu » se juge DANS LA LANGUE AFFICHÉE (voir dhikrRelu).
+  const traductionEnCause = BIBLIO.some(dhikrTraductionNonRelue);
+  $('#biblio-warn').hidden = BIBLIO.every(dhikrRelu);
+  $('#biblio-warn-titre').textContent =
+    T(traductionEnCause ? 'biblio.warn.titre.trad' : 'biblio.warn.titre');
+  $('#biblio-warn-texte').textContent =
+    T(traductionEnCause ? 'biblio.warn.texte.trad' : 'biblio.warn.texte');
 
   afficherBiblioCats();
   afficherBiblio();
@@ -948,20 +973,36 @@ function fermerBiblio() {
 }
 
 /* On devine la bonne catégorie d'après le nom de l'intention :
-   « Adhkar du matin » ouvre directement sur les dhikr du matin. */
+   « Adhkar du matin » ouvre directement sur les dhikr du matin.
+
+   ⚠️ Les mots cherchés doivent exister DANS CHAQUE LANGUE. Avec les
+   seuls mots français, « Morning adhkar » ne tombait sur rien et la
+   bibliothèque s'ouvrait toujours sur la première catégorie. */
+const MOTS_CATEGORIE = [
+  ['matin',        ['matin', 'morning']],
+  ['soir',         ['soir', 'evening']],
+  ['avant-dormir', ['dormir', 'coucher', 'nuit', 'sleep', 'bed', 'night']],
+  ['apres-priere', ['prière', 'priere', 'salat', 'prayer']]
+];
+
 function categoriePour(t) {
   const n = t.nom.toLowerCase();
-  if (n.indexOf('matin') !== -1) return 'matin';
-  if (n.indexOf('soir') !== -1)  return 'soir';
-  if (n.indexOf('dormir') !== -1 || n.indexOf('coucher') !== -1 || n.indexOf('nuit') !== -1) return 'avant-dormir';
-  if (n.indexOf('prière') !== -1 || n.indexOf('priere') !== -1 || n.indexOf('salat') !== -1) return 'apres-priere';
+  for (const [cat, mots] of MOTS_CATEGORIE) {
+    if (mots.some(m => n.indexOf(m) !== -1)) return cat;
+  }
   return BIBLIO_CATS.length ? BIBLIO_CATS[0].id : 'matin';
+}
+
+/* Le nom d'une catégorie. Une catégorie ajoutée dans adhkar.js sans
+   traduction garde son nom d'origine plutôt que d'afficher sa clé. */
+function nomCategorie(c) {
+  return TEXTES['cat.' + c.id] ? T('cat.' + c.id) : c.nom;
 }
 
 function afficherBiblioCats() {
   $('#biblio-cats').innerHTML = BIBLIO_CATS.map(c => `
     <button type="button" class="chip ${c.id === biblioCat ? 'is-on' : ''}"
-            role="radio" aria-checked="${c.id === biblioCat}" data-cat="${c.id}">${c.nom}</button>`).join('');
+            role="radio" aria-checked="${c.id === biblioCat}" data-cat="${c.id}">${echapper(nomCategorie(c))}</button>`).join('');
 
   $$('#biblio-cats .chip').forEach(b => b.addEventListener('click', () => {
     biblioCat = b.dataset.cat;
@@ -977,7 +1018,7 @@ function afficherBiblio() {
   const dhikrs = BIBLIO.filter(d => (d.categories || []).indexOf(biblioCat) !== -1);
 
   if (!dhikrs.length) {
-    boite.innerHTML = '<p class="note">Aucun dhikr dans cette catégorie pour le moment.</p>';
+    boite.innerHTML = '<p class="note">' + echapper(T('biblio.videcat')) + '</p>';
   }
   dhikrs.forEach(d => boite.appendChild(ligneBiblio(d)));
 
@@ -987,7 +1028,7 @@ function afficherBiblio() {
   if (perso.length) {
     const titre = document.createElement('h2');
     titre.className = 'section-title';
-    titre.textContent = 'Tes propres dhikr';
+    titre.textContent = T('biblio.mesdhikr');
     boite.appendChild(titre);
     perso.forEach(c => boite.appendChild(lignePerso(c)));
   }
@@ -1004,15 +1045,15 @@ function ligneBiblio(d) {
   el.innerHTML = `
     <div class="bib__ligne">
       <button class="bib__hit" aria-pressed="${choisi}"
-              aria-label="${echapper(d.nom)}${choisi ? ' : dans ma liste' : ' : à ajouter'}">
+              aria-label="${echapper(T(choisi ? 'biblio.dansliste' : 'biblio.aajouter', { nom: champDhikr(d, 'nom') }))}">
         <span class="bib__box">${CHECK_SVG}</span>
         <span class="bib__body">
-          <span class="bib__nom">${echapper(d.nom)}</span>
-          <span class="bib__src">${echapper(d.source)}</span>
+          <span class="bib__nom">${echapper(champDhikr(d, 'nom'))}</span>
+          <span class="bib__src">${echapper(champDhikr(d, 'source'))}</span>
         </span>
         <span class="bib__fois">${d.repetitions}×</span>
       </button>
-      <button class="bib__voir" aria-expanded="${ouvert}" aria-label="Voir le texte de ${echapper(d.nom)}">
+      <button class="bib__voir" aria-expanded="${ouvert}" aria-label="${echapper(T('biblio.voirtexte', { nom: champDhikr(d, 'nom') }))}">
         <span class="bib__chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
     </div>
@@ -1044,7 +1085,7 @@ function lignePerso(c) {
   el.className = 'bib is-on';
   el.innerHTML = `
     <div class="bib__ligne">
-      <button class="bib__hit" aria-pressed="true" aria-label="${echapper(c.nom)} : dans ma liste">
+      <button class="bib__hit" aria-pressed="true" aria-label="${echapper(T('biblio.dansliste', { nom: c.nom }))}">
         <span class="bib__box">${CHECK_SVG}</span>
         <span class="bib__body">
           <span class="bib__nom">${echapper(c.nom)}</span>
@@ -1064,19 +1105,21 @@ function lignePerso(c) {
 
 function texteDuDhikr(d) {
   let html = '';
+  const traduction = champDhikr(d, 'traduction');
   if (d.arabe)      html += `<p class="arabe" lang="ar" dir="rtl">${echapper(d.arabe)}</p>`;
   if (d.phonetique) html += `<p class="lecture__pho">${echapper(d.phonetique)}</p>`;
-  if (d.traduction) html += `<p class="lecture__trad">${echapper(d.traduction)}</p>`;
-  if (!d.verifie) {
-    html += '<p class="lecture__warn">Texte pas encore relu par une personne de science.</p>';
+  if (traduction)   html += `<p class="lecture__trad">${echapper(traduction)}</p>`;
+  if (!dhikrRelu(d)) {
+    html += '<p class="lecture__warn">' +
+      echapper(T(dhikrTraductionNonRelue(d) ? 'dhikr.pasrelu.trad' : 'dhikr.pasrelu')) + '</p>';
   }
-  return html || '<p class="lecture__trad">Ce dhikr n\'a pas encore de texte.</p>';
+  return html || '<p class="lecture__trad">' + echapper(T('dhikr.pastexte')) + '</p>';
 }
 
 function majCompteurBiblio() {
   const n = biblioChoix.length;
   $('#biblio-count').textContent =
-    n === 0 ? 'Aucun dhikr choisi' : n === 1 ? '1 dhikr choisi' : n + ' dhikr choisis';
+    n === 0 ? T('biblio.aucun') : n === 1 ? T('biblio.un') : T('biblio.plusieurs', { n });
 }
 
 /* ─── Feuille de lecture d'un dhikr ─────────────────────── */
@@ -1088,17 +1131,22 @@ function ouvrirLecture(t, s, d, liSous, liParent) {
   d = d || {};
   lectureCtx = { t, s, liSous, liParent };
 
-  $('#lecture-nom').textContent  = s.nom;
+  $('#lecture-nom').textContent  = nomDuSous(s);
   $('#lecture-fois').textContent = s.repetitions > 1
-    ? `À répéter ${s.repetitions} fois` : 'Une fois';
+    ? T('lecture.fois', { n: s.repetitions }) : T('lecture.unefois');
 
   remplir('#lecture-arabe', d.arabe);
   remplir('#lecture-pho',   d.phonetique);
-  remplir('#lecture-trad',  d.traduction);
-  remplir('#lecture-src',   d.source);
-  $('#lecture-warn').hidden = !!d.verifie;
+  remplir('#lecture-trad',  champDhikr(d, 'traduction'));
+  remplir('#lecture-src',   champDhikr(d, 'source'));
 
-  $('#lecture-done').textContent = Store.sousFaite(s.id, JOUR) ? 'Décocher' : 'C\'est fait';
+  // ⚠️ L'avertissement suit la LANGUE affichée : l'arabe est relu, le
+  // sens traduit ne l'est pas encore, et cela doit se lire à l'écran.
+  $('#lecture-warn').hidden      = dhikrRelu(d);
+  $('#lecture-warn').textContent =
+    T(dhikrTraductionNonRelue(d) ? 'lecture.warn.trad' : 'lecture.warn');
+
+  $('#lecture-done').textContent = T(Store.sousFaite(s.id, JOUR) ? 'lecture.decocher' : 'lecture.fait');
   $('#lecture-backdrop').hidden = false;
   $('#lecture').hidden = false;
 }
@@ -1191,13 +1239,13 @@ $('#task-form').addEventListener('submit', e => {
     Store.modifierTache(tacheEnEdition.id, champs);
     fermerFeuille();
     afficherTaches();
-    toast('Intention modifiée ✍️');
+    toast(T('toast.modifiee'));
   } else {
     Store.ajouterTache(champs);
     fermerFeuille();
     aller('today');
     afficherTaches();
-    toast('Intention ajoutée — qu\'Allah te facilite 🤍');
+    toast(T('toast.ajoutee'));
   }
   carnetAChange();
 });
@@ -1226,7 +1274,7 @@ $('#f-time-nuit-off').addEventListener('click', () => {
   $('#set-quiet').checked = false;
   majNoteNuit();
   carnetAChange();
-  toast('Les rappels de la nuit sonneront');
+  toast(T('toast.nuitsonne'));
 });
 
 $('#menu-edit').addEventListener('click', () => {
@@ -1255,7 +1303,7 @@ $('#confirm-yes').addEventListener('click', () => {
   Store.supprimerTache(tacheDuMenu.id);
   fermerMenu();
   afficherTaches();
-  toast('Intention retirée. Ce qui est accompli reste inscrit.');
+  toast(T('toast.retiree'));
   carnetAChange();
 });
 
@@ -1267,7 +1315,7 @@ $('#biblio-save').addEventListener('click', () => {
   fermerBiblio();
   afficherTaches();
   carnetAChange();
-  toast('Ta liste de dhikr est à jour 🤍');
+  toast(T('toast.dhikrmaj'));
 });
 
 $('#lecture-done').addEventListener('click', () => {
@@ -1320,6 +1368,33 @@ $('#p-nom').addEventListener('input', () => {
   $('#p-nom-err').hidden = true;
 });
 
+/* ─── Le choix de la langue ─────────────────────────────────
+   Changer de langue RECHARGE la page, volontairement.
+
+   Retraduire à chaud obligerait à repasser derrière chaque écran déjà
+   dessiné — les listes, les feuilles ouvertes, les textes construits à
+   la main — et il suffirait d'en oublier un pour laisser un mot de
+   l'ancienne langue traîner. Recharger est plus lent d'une demi-seconde
+   et ne laisse rien derrière. Rien n'est perdu : le carnet est déjà
+   rangé sur l'appareil, la langue aussi. */
+function brancherLangue() {
+  const choix = $('#set-langue');
+  if (!choix) return;
+
+  choix.innerHTML = LANGUES.map(l =>
+    `<option value="${l.code}">${echapper(l.nom)}</option>`).join('');
+  choix.value = Langue.choisie();
+
+  choix.addEventListener('change', () => {
+    if (choix.value === Langue.choisie()) return;
+    Langue.choisir(choix.value);
+    // On range le carnet avant de partir : une modification faite dans
+    // la seconde qui précède ne doit pas disparaître avec le rechargement.
+    if (typeof sauverDouble === 'function') sauverDouble(true);
+    location.reload();
+  });
+}
+
 $('#theme-toggle').addEventListener('click', () => appliquerTheme(!Store.reglages().sombre));
 $('#set-dark').addEventListener('change', e => appliquerTheme(e.target.checked));
 
@@ -1342,9 +1417,11 @@ function nomDeSauvegarde() {
 }
 
 function phraseResume(r) {
-  const i = `${r.intentions} intention${r.intentions > 1 ? 's' : ''}`;
-  const j = `${r.joursNotes} jour${r.joursNotes > 1 ? 's' : ''} d'historique`;
-  return `${i} et ${j}`;
+  // ⚠️ « 0 jour » en français, mais « 0 days » en anglais : la règle
+  // du pluriel change avec la langue. Voir estPluriel() dans textes.js.
+  const i = T(estPluriel(r.intentions) ? 'resume.intentions' : 'resume.intention', { n: r.intentions });
+  const j = T(estPluriel(r.joursNotes) ? 'resume.jours'      : 'resume.jour',      { n: r.joursNotes });
+  return i + T('resume.et') + j;
 }
 
 /* Le texte du fichier, mis en forme. Indenté exprès : quelqu'un qui
@@ -1388,8 +1465,8 @@ async function envoyerUneCopie(uri) {
   const Envoi = greffonNatif('Share');
   if (!Envoi) return;
   await Envoi.share({
-    title: 'Sauvegarde Ibadah',
-    dialogTitle: 'Envoyer une copie de ta sauvegarde',
+    title: T('sauv.nom'),
+    dialogTitle: T('sauv.partage'),
     files: [uri]
   });
 }
@@ -1428,14 +1505,10 @@ async function sauvegarderDansLAppli(resume) {
   await faireLeMenage(Fs);
 
   const envoyer = await poserQuestion({
-    titre: 'Sauvegarde enregistrée',
-    texte: `Ton carnet — ${phraseResume(resume)} — est rangé dans :
-
-${cheminLisible(uri)}
-
-Ce fichier reste sur le téléphone même si tu désinstalles Ibadah. Tu peux aussi en envoyer une copie ailleurs : sur Drive, ou dans un message à toi-même.`,
-    ok: 'Envoyer une copie',
-    annuler: 'C’est bon',
+    titre: T('sauv.ok.titre'),
+    texte: T('sauv.ok.texte', { resume: phraseResume(resume), chemin: cheminLisible(uri) }),
+    ok: T('sauv.ok.copie'),
+    annuler: T('sauv.ok.bon'),
     danger: false
   });
 
@@ -1469,13 +1542,13 @@ $('#btn-export').addEventListener('click', async () => {
       await sauvegarderDansLAppli(resume);
     } else {
       sauvegarderSurLeSite();
-      toast(`Sauvegarde enregistrée — ${phraseResume(resume)} 🤍`);
+      toast(T('sauv.ok.toast', { resume: phraseResume(resume) }));
     }
   } catch (e) {
     // Refermer la fenêtre de partage sans rien choisir passe par ici :
     // ce n'est pas une panne, on ne va pas inquiéter pour ça.
     const annule = /cancel/i.test(String(e && e.message));
-    if (!annule) toast('La sauvegarde n\'a pas pu être enregistrée.');
+    if (!annule) toast(T('sauv.echec'));
   }
 });
 
@@ -1493,8 +1566,8 @@ $('#import-file').addEventListener('change', async e => {
     contenu = JSON.parse(await fichier.text());
   } catch (err) {
     await prevenir({
-      titre: 'Ce fichier ne peut pas être lu',
-      texte: 'Choisis un fichier de sauvegarde Ibadah — son nom commence par « ibadah-sauvegarde ».'
+      titre: T('rest.illisible.titre'),
+      texte: T('rest.illisible.texte')
     });
     return;
   }
@@ -1502,24 +1575,22 @@ $('#import-file').addEventListener('change', async e => {
   // On regarde d'abord, sans rien remplacer.
   const apercu = Store.importer(contenu, { verifierSeulement: true });
   if (!apercu.ok) {
-    await prevenir({ titre: 'Cette sauvegarde est inutilisable', texte: apercu.raison });
+    await prevenir({ titre: T('rest.inutilisable'), texte: apercu.raison });
     return;
   }
 
   const actuel = Store.exporter().resume;
   const ok = await demander({
-    titre: 'Remplacer ton carnet ?',
-    texte:
-      `Cette sauvegarde contient ${phraseResume(apercu.resume)}.\n\n` +
-      `Elle va remplacer ce qui est sur cet appareil ` +
-      `(${phraseResume(actuel)}), sans possibilité de revenir en arrière.`,
-    ok: 'Remplacer'
+    titre: T('rest.remplacer.titre'),
+    texte: T('rest.remplacer.texte', {
+      nouveau: phraseResume(apercu.resume), actuel: phraseResume(actuel) }),
+    ok: T('rest.remplacer.ok')
   });
   if (!ok) return;
 
   const verdict = Store.importer(contenu);
   if (!verdict.ok) {
-    await prevenir({ titre: 'La restauration n\'a pas abouti', texte: verdict.raison });
+    await prevenir({ titre: T('rest.echec'), texte: verdict.raison });
     return;
   }
 
@@ -1528,7 +1599,7 @@ $('#import-file').addEventListener('change', async e => {
   toutAfficher();
   carnetAChange();
   aller('today');
-  toast(`Sauvegarde restaurée — ${phraseResume(verdict.resume)} 🤍`);
+  toast(T('rest.ok.toast', { resume: phraseResume(verdict.resume) }));
 });
 
 /* Un carnet d'une version précédente dort peut-être encore sur l'appareil :
@@ -1538,7 +1609,7 @@ $('#import-file').addEventListener('change', async e => {
 (function proposerRecuperation() {
   const trouve = Store.ancienCarnet();
   if (!trouve) return;
-  $('#recover-help').textContent = `Retrouvé sur cet appareil : ${phraseResume(trouve.resume)}`;
+  $('#recover-help').textContent = T('set.recover.trouve', { resume: phraseResume(trouve.resume) });
   $('#btn-recover').hidden = false;
 })();
 
@@ -1546,26 +1617,24 @@ $('#btn-recover').addEventListener('click', async () => {
   const trouve = Store.ancienCarnet();
   if (!trouve) {
     await prevenir({
-      titre: 'Ce carnet n\'est plus disponible',
-      texte: 'Il n\'a pas été retrouvé sur cet appareil.'
+      titre: T('recup.parti.titre'),
+      texte: T('recup.parti.texte')
     });
     return;
   }
 
   const actuel = Store.exporter().resume;
   const ok = await demander({
-    titre: 'Récupérer l\'ancien carnet ?',
-    texte:
-      `Un carnet d'une version précédente a été retrouvé : ${phraseResume(trouve.resume)}.\n\n` +
-      `Le récupérer remplacera ce qui est sur cet appareil ` +
-      `(${phraseResume(actuel)}).`,
-    ok: 'Récupérer'
+    titre: T('recup.titre'),
+    texte: T('recup.texte', {
+      trouve: phraseResume(trouve.resume), actuel: phraseResume(actuel) }),
+    ok: T('recup.ok')
   });
   if (!ok) return;
 
   const verdict = Store.restaurerAncienCarnet();
   if (!verdict.ok) {
-    await prevenir({ titre: 'La récupération n\'a pas abouti', texte: verdict.raison });
+    await prevenir({ titre: T('recup.echec'), texte: verdict.raison });
     return;
   }
 
@@ -1574,7 +1643,7 @@ $('#btn-recover').addEventListener('click', async () => {
   toutAfficher();
   carnetAChange();
   aller('today');
-  toast(`Ancien carnet récupéré — ${phraseResume(verdict.resume)} 🤍`);
+  toast(T('recup.ok.toast', { resume: phraseResume(verdict.resume) }));
 });
 
 $('#btn-demo').addEventListener('click', async () => {
@@ -1587,12 +1656,9 @@ $('#btn-demo').addEventListener('click', async () => {
   const r = Store.exporter().resume;
   if (r.intentions || r.joursNotes) {
     const ok = await demander({
-      titre: 'Charger les données d\'exemple ?',
-      texte:
-        `Les données d'exemple remplacent ton carnet : ${phraseResume(r)} ` +
-        `seront perdues.\n\n` +
-        `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.`,
-      ok: 'Charger l\'exemple'
+      titre: T('demo.titre'),
+      texte: T('demo.texte', { actuel: phraseResume(r) }),
+      ok: T('demo.ok')
     });
     if (!ok) return;
   }
@@ -1603,7 +1669,7 @@ $('#btn-demo').addEventListener('click', async () => {
   toutAfficher();
   carnetAChange();
   aller('today');
-  toast('Données d\'exemple chargées ↺');
+  toast(T('toast.demo'));
 });
 
 $('#btn-clear').addEventListener('click', async () => {
@@ -1611,11 +1677,9 @@ $('#btn-clear').addEventListener('click', async () => {
   // erreur, le bouton étant juste sous « Charger des données d'exemple ».
   const r = Store.exporter().resume;
   const ok = await demander({
-    titre: 'Vraiment tout effacer ?',
-    texte:
-      `Tout effacer supprimera ${phraseResume(r)}, définitivement.\n\n` +
-      `Si tu n'as pas encore enregistré de sauvegarde, annule et fais-le d'abord.`,
-    ok: 'Tout effacer'
+    titre: T('clear.titre'),
+    texte: T('clear.texte', { actuel: phraseResume(r) }),
+    ok: T('clear.ok')
   });
   if (!ok) return;
 
@@ -1727,7 +1791,7 @@ async function recupererDouble() {
   toutAfficher();
   $('#welcome').hidden = true;
   if (typeof planifierRappels === 'function') planifierRappels();
-  toast(`Ton carnet a été récupéré — ${phraseResume(verdict.resume)} 🤍`);
+  toast(T('recup.auto.toast', { resume: phraseResume(verdict.resume) }));
 }
 
 /* ─── Filet 2 : une sauvegarde par jour, en fichier ─────────
@@ -1788,10 +1852,8 @@ async function annoncerLeCheminUneFois(Fs, Rangement) {
     const lisible = cheminLisible(uri);
     setTimeout(() => {
       prevenir({
-        titre: 'Une copie chaque jour',
-        texte: 'Ibadah range désormais une sauvegarde par jour dans :\n\n' + lisible +
-               '\n\nCes fichiers restent sur le téléphone même si tu désinstalles ' +
-               'l\'application. Les 7 derniers jours sont gardés.'
+        titre: T('copies.titre'),
+        texte: T('copies.texte', { chemin: lisible })
       });
     }, 2200);
   } catch (e) { /* tant pis pour l'annonce */ }
@@ -1825,7 +1887,7 @@ function versionPublieee() {
   try {
     const balise = document.querySelector('script[src*="app.js"]');
     const trouve = balise && balise.getAttribute('src').match(/[?&]v=([\w.-]+)/);
-    return trouve ? trouve[1] : 'en développement';
+    return trouve ? trouve[1] : T('contact.dev');
   } catch (e) { return 'inconnue'; }
 }
 
@@ -1850,19 +1912,19 @@ function messageDeContact() {
     '',
     '',
     '— — — — — — — — — — — — — — —',
-    'Ces quelques lignes aident à retrouver le problème.',
-    'Tu peux les effacer si tu préfères.',
+    T('contact.entete1'),
+    T('contact.entete2'),
     '',
-    'Version : ' + versionPublieee(),
-    'Appareil : ' + modeleDuTelephone(),
-    'Application installée : ' + (estNatif() ? 'oui' : 'non, ouverte dans le navigateur'),
-    'Écran affiché : ' + ecranAffiche(),
-    'Langue : ' + (navigator.language || 'inconnue')
+    T('contact.version')   + versionPublieee(),
+    T('contact.appareil')  + modeleDuTelephone(),
+    T('contact.installee') + T(estNatif() ? 'contact.oui' : 'contact.non'),
+    T('contact.ecran')     + ecranAffiche(),
+    T('contact.langue')    + Langue.choisie() + ' (' + (navigator.language || T('contact.inconnue')) + ')'
   ].join('\n');
 }
 
 $('#btn-contact').addEventListener('click', () => {
-  const sujet = 'Ibadah — un retour';
+  const sujet = T('contact.sujet');
   const lien = 'mailto:' + ADRESSE_CONTACT +
     '?subject=' + encodeURIComponent(sujet) +
     '&body='    + encodeURIComponent(messageDeContact());
@@ -1923,7 +1985,7 @@ function brancherBoutonRetour() {
     // souvent par réflexe, et on perd sa place.
     if (sortieArmee) { clearTimeout(sortieArmee); Appli.exitApp(); return; }
     sortieArmee = setTimeout(() => { sortieArmee = null; }, 2000);
-    toast('Appuie encore pour quitter');
+    toast(T('toast.quitter'));
   });
 }
 
@@ -2030,23 +2092,23 @@ const DEPART = {
 };
 
 const PACKS = [
-  { id: 'coran',  ico: '📖', nom: 'Coran quotidien', desc: 'Une page chaque jour',
-    taches: [{ nom: 'Lire une page de Coran', frequence: 'daily', heure: '07:30' }] },
+  { id: 'coran',  ico: '📖', cle: 'pack.coran',
+    taches: [{ cle: 'pack.coran.t1', frequence: 'daily', heure: '07:30' }] },
 
-  { id: 'adhkar', ico: '🌅', nom: 'Adhkar matin et soir', desc: 'Avec 8 dhikr déjà prêts dans chacun',
-    taches: [{ nom: 'Adhkar du matin', frequence: 'daily', heure: '08:00', depuis: 'matin' },
-             { nom: 'Adhkar du soir',  frequence: 'daily', heure: '18:30', depuis: 'soir' }] },
+  { id: 'adhkar', ico: '🌅', cle: 'pack.adhkar',
+    taches: [{ cle: 'pack.adhkar.t1', frequence: 'daily', heure: '08:00', depuis: 'matin' },
+             { cle: 'pack.adhkar.t2', frequence: 'daily', heure: '18:30', depuis: 'soir' }] },
 
-  { id: 'sunna',  ico: '🌙', nom: 'Sunna de la semaine', desc: 'Jeûne du lundi, sourate Al-Kahf le vendredi',
-    taches: [{ nom: 'Jeûner le lundi',        frequence: 'weekly', heure: '', jourSemaine: 1 },
-             { nom: 'Lire sourate Al-Kahf',   frequence: 'weekly', heure: '', jourSemaine: 5 }] },
+  { id: 'sunna',  ico: '🌙', cle: 'pack.sunna',
+    taches: [{ cle: 'pack.sunna.t1', frequence: 'weekly', heure: '', jourSemaine: 1 },
+             { cle: 'pack.sunna.t2', frequence: 'weekly', heure: '', jourSemaine: 5 }] },
 
-  { id: 'liens',  ico: '🤝', nom: 'Bienfaisance', desc: 'Aumône et liens familiaux',
-    taches: [{ nom: 'Faire une aumône (sadaqa)',        frequence: 'weekly', heure: '',      jourSemaine: 5 },
-             { nom: 'Prendre des nouvelles d\'un proche', frequence: 'weekly', heure: '19:00', jourSemaine: 0 }] },
+  { id: 'liens',  ico: '🤝', cle: 'pack.liens',
+    taches: [{ cle: 'pack.liens.t1', frequence: 'weekly', heure: '',      jourSemaine: 5 },
+             { cle: 'pack.liens.t2', frequence: 'weekly', heure: '19:00', jourSemaine: 0 }] },
 
-  { id: 'savoir', ico: '🧠', nom: 'Apprendre', desc: 'Un hadith nouveau chaque jour',
-    taches: [{ nom: 'Apprendre un nouveau hadith', frequence: 'daily', heure: '21:00' }] }
+  { id: 'savoir', ico: '🧠', cle: 'pack.savoir',
+    taches: [{ cle: 'pack.savoir.t1', frequence: 'daily', heure: '21:00' }] }
 ];
 
 const packsChoisis = new Set(['coran', 'adhkar']);
@@ -2055,11 +2117,11 @@ function afficherPacks() {
   $('#packs').innerHTML = PACKS.map(p => `
     <button type="button" class="pack ${packsChoisis.has(p.id) ? 'is-on' : ''}"
             data-pack="${p.id}" aria-pressed="${packsChoisis.has(p.id)}"
-            aria-label="${echapper(p.nom)}">
+            aria-label="${echapper(T(p.cle + '.nom'))}">
       <span class="pack__ico" aria-hidden="true">${p.ico}</span>
       <span class="pack__body">
-        <span class="pack__name">${p.nom}</span>
-        <span class="pack__desc">${p.desc}</span>
+        <span class="pack__name">${echapper(T(p.cle + '.nom'))}</span>
+        <span class="pack__desc">${echapper(T(p.cle + '.desc'))}</span>
       </span>
       <span class="pack__dot">${CHECK_SVG}</span>
     </button>`).join('');
@@ -2075,7 +2137,7 @@ function afficherPacks() {
    chercher ses dhikr dans la bibliothèque quand il y en a. */
 function tacheDepuisModele(m) {
   const t = {
-    nom: m.nom, frequence: m.frequence, heure: m.heure,
+    nom: T(m.cle), frequence: m.frequence, heure: m.heure,
     jourSemaine: m.jourSemaine === undefined ? null : m.jourSemaine
   };
   if (m.depuis) {
@@ -2099,7 +2161,7 @@ function terminerBienvenue(avecPacks) {
   $('#welcome').hidden = true;
   toutAfficher();
   carnetAChange();
-  if (avecPacks && packsChoisis.size) toast('Ta liste est prête — qu\'Allah te facilite 🤍');
+  if (avecPacks && packsChoisis.size) toast(T('toast.listeprete'));
 }
 
 $('#w-next').addEventListener('click', () => {
@@ -2140,7 +2202,7 @@ $('#install-no').addEventListener('click', () => {
 
 window.addEventListener('appinstalled', () => {
   $('#install-bar').hidden = true;
-  toast('Ibadah est installée 🤍');
+  toast(T('today.install.faite'));
 });
 
 /* ─── Le gardien hors-ligne ─────────────────────────────── */
@@ -2174,6 +2236,7 @@ if (estNatif()) {
 
 /* ─── Démarrage ─────────────────────────────────────────── */
 function toutAfficher() {
+  traduirePage();
   afficherDate();
   afficherPrieres();
   afficherTaches();
@@ -2183,6 +2246,9 @@ function toutAfficher() {
 }
 
 appliquerTheme(Store.reglages().sombre);
+// Une seule fois : toutAfficher() repasse plusieurs fois par ici après
+// une restauration, et brancher deux fois poserait deux écouteurs.
+brancherLangue();
 suivreLeClavier();
 toutAfficher();
 chargerHadith(false);
