@@ -119,8 +119,16 @@ function feuilleVersDhikr(lignes) {
   // La première ligne donne les titres de colonnes. On note à quelle
   // position se trouve chacune, pour que l'ordre des colonnes dans la
   // feuille n'ait aucune importance.
+  /* Les titres de colonnes sont écrits à la main par un humain dans un
+     tableur : « Nom EN », « nom  en », « Nom_EN »… On les ramène tous à
+     la même forme.
+
+     ⚠️ On ne peut PAS se servir de feuilleAplatir pour ça : elle sert
+     aussi aux catégories, et « apres-priere » perdrait son tiret. */
+  const titreColonne = t => feuilleAplatir(t).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+
   const colonne = {};
-  lignes[0].forEach((titre, i) => { colonne[feuilleAplatir(titre)] = i; });
+  lignes[0].forEach((titre, i) => { colonne[titreColonne(titre)] = i; });
 
   const valeurDe = (ligne, nom) => {
     const i = colonne[nom];
@@ -143,7 +151,7 @@ function feuilleVersDhikr(lignes) {
 
     const rep = parseInt(valeurDe(ligne, 'repetitions'), 10);
 
-    dhikrs.push({
+    const d = {
       id:          feuilleIdentifiant(nom, dejaPris),
       categories:  cats.length ? cats : ['general'],   // sinon il serait invisible
       nom:         nom,
@@ -154,7 +162,34 @@ function feuilleVersDhikr(lignes) {
       repetitions: (isFinite(rep) && rep > 0) ? rep : 1,
       verifie:     feuilleEstOui(valeurDe(ligne, 'verifie')),
       _feuille:    true    // marque d'origine : sert à les retirer proprement
-    });
+    };
+
+    /* ─── Les autres langues ────────────────────────────────
+       Pour chaque langue que l'application sait parler, on cherche
+       les colonnes « Nom EN », « Traduction EN », « Source EN »,
+       « Verifie EN » — et pareil pour toute langue ajoutée ensuite.
+
+       Ces colonnes sont FACULTATIVES : une feuille qui n'en a pas
+       continue de marcher exactement comme avant, et le dhikr
+       s'affiche alors en français dans toutes les langues.
+
+       ⚠️ « Verifie EN » suit la même règle que « Verifie » : vide
+       veut dire NON. Une traduction n'est jamais présumée relue —
+       c'est le garde-fou d'adhkar.js, il vaut aussi ici. */
+    if (typeof LANGUES !== 'undefined' && Array.isArray(LANGUES)) {
+      LANGUES.forEach(l => {
+        if (l.code === 'fr') return;              // le français est déjà là
+        const nomTraduit = valeurDe(ligne, 'nom ' + l.code);
+        const trad       = valeurDe(ligne, 'traduction ' + l.code);
+        const src        = valeurDe(ligne, 'source ' + l.code);
+        if (nomTraduit) d['nom_' + l.code]        = nomTraduit;
+        if (trad)       d['traduction_' + l.code] = trad;
+        if (src)        d['source_' + l.code]     = src;
+        d['verifie_' + l.code] = feuilleEstOui(valeurDe(ligne, 'verifie ' + l.code));
+      });
+    }
+
+    dhikrs.push(d);
   }
 
   return dhikrs;

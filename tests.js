@@ -2326,6 +2326,63 @@ groupe('La signature');
     !!mots && /'morning'/.test(mots[1]) && /'evening'/.test(mots[1])
            && /'prayer'/.test(mots[1]) && /'sleep'/.test(mots[1]));
 
+  /* ─── La feuille Google et les langues ────────────────────
+     Les dhikr ajoutés par Mucahid s'affichaient en FRANÇAIS au milieu
+     d'une bibliothèque anglaise : la feuille ne connaissait que des
+     colonnes françaises. Signalé par lui le 22 août 2026 — vu à
+     l'écran, pas trouvé par les tests. */
+  {
+    const F = new Function('LANGUES',
+      lire('feuille.js') + '; return { feuilleVersDhikr };')(MOTS.LANGUES);
+
+    // Trois orthographes de colonne, parce qu'un humain écrit à la main.
+    const avec = F.feuilleVersDhikr([
+      ['Nom', 'Categories', 'Traduction', 'Source', 'Repetitions', 'Verifie',
+       'Nom EN', 'traduction_en', 'SOURCE  En', 'Verifie EN'],
+      ['Tasbih', 'matin', 'Gloire à Allah', 'Muslim 1', '33', 'oui',
+       'Tasbih', 'Glory be to Allah', 'Muslim 1', 'oui'],
+      ['Tahmid', 'soir', 'Louange à Allah', 'Muslim 2', '33', 'oui',
+       'Tahmid', 'Praise be to Allah', 'Muslim 2', '']
+    ]);
+
+    verifier('★ la feuille sait lire les colonnes d\'une autre langue',
+      avec.map(d => d.traduction_en),
+      ['Glory be to Allah', 'Praise be to Allah']);
+    // ⚠️ « SOURCE  En » porte DEUX espaces : c'est cette colonne-là qui
+    //    prouve que les espaces en trop sont bien ramenés à un seul.
+    //    Sans elle, on pouvait retirer cette normalisation sans rien voir.
+    verifier('★ et un titre de colonne mal espacé est reconnu quand même',
+      avec.map(d => d.source_en), ['Muslim 1', 'Muslim 2']);
+    vrai('★ et « Verifie EN » vide vaut NON, comme pour le français',
+      avec[0].verifie_en === true && avec[1].verifie_en === false);
+
+    // Une feuille d'avant ce changement ne doit rien casser.
+    const sans = F.feuilleVersDhikr([
+      ['Nom', 'Categories', 'Traduction', 'Source', 'Repetitions', 'Verifie'],
+      ['Tasbih', 'matin', 'Gloire à Allah', 'Muslim 1', '33', 'oui']
+    ]);
+    vrai('★ une feuille sans colonnes de langue marche toujours',
+      sans.length === 1 && sans[0].nom === 'Tasbih' && sans[0].verifie === true);
+    vrai('★ et son dhikr n\'est PAS présumé relu dans l\'autre langue',
+      sans[0].verifie_en === false && sans[0].nom_en === undefined);
+
+    // ⚠️ Le tiret des catégories ne doit pas être avalé par la
+    //    normalisation des titres de colonnes : « apres-priere » est
+    //    un identifiant, pas un titre.
+    const cat = F.feuilleVersDhikr([
+      ['Nom', 'Categories'],
+      ['Tasbih', 'apres-priere']
+    ]);
+    verifier('★ la catégorie « apres-priere » garde son tiret',
+      cat[0].categories, ['apres-priere']);
+
+    // Le modèle proposé à Mucahid doit montrer les colonnes de langue,
+    // sinon personne ne devine qu'elles existent.
+    const modele = lire('modele-adhkar.csv');
+    vrai('le modèle CSV montre les colonnes de langue',
+      /Nom EN/.test(modele) && /Traduction EN/.test(modele) && /Verifie EN/.test(modele));
+  }
+
   /* ─── Les paquets du premier jour ─────────────────────────
      ★ Le 22 août 2026, ces cinq paquets ont affiché « undefined »
      sur le tout premier écran de l'application, en anglais : le code

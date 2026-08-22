@@ -220,8 +220,26 @@ Tu ouvres ta feuille, tu ajoutes une ligne, et c'est tout.
 | **Repetitions** | Combien de fois. Vide ou illisible = 1. |
 | **Verifie** | `oui` seulement si une personne de science a relu. Tout le reste, y compris vide, veut dire **non** — et l'avertissement reste affiché. |
 
+Et quatre colonnes **facultatives**, pour la version anglaise :
+
+| Colonne | Ce qu'on y met |
+|---|---|
+| **Nom EN** | Le titre en anglais |
+| **Traduction EN** | Le sens en anglais |
+| **Source EN** | La source en anglais |
+| **Verifie EN** | `oui` seulement si le **sens anglais** a été relu. Vide = **non**, comme pour le français. |
+
+Si tu les laisses vides — ou si tu ne crées pas ces colonnes du tout —
+**rien ne casse** : le dhikr s'affiche alors en français, même dans
+l'application en anglais. C'est ce qui se passe aujourd'hui pour tes deux
+dhikr. Rien ne t'oblige à les remplir.
+
+L'arabe et la phonétique n'ont pas de version anglaise : ils ne changent
+pas de langue.
+
 L'ordre des colonnes n'a aucune importance, et les accents ou majuscules
-dans les titres sont acceptés (`Répétitions` = `repetitions`).
+dans les titres sont acceptés (`Répétitions` = `repetitions`,
+`Nom_EN` = `nom en`).
 
 ### Trois choses à savoir
 

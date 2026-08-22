@@ -1,3 +1,3 @@
-Nom,Categories,Arabe,Phonetique,Traduction,Source,Repetitions,Verifie
-Tasbih,"matin, soir, apres-priere",سُبْحَانَ اللَّهِ,Subhâna-Llâh,Gloire et pureté à Allah,Exemple à remplacer,33,non
-Tahmid,"matin, soir, apres-priere",الْحَمْدُ لِلَّهِ,Al-hamdu li-Llâh,Louange à Allah,Exemple à remplacer,33,non
+Nom,Categories,Arabe,Phonetique,Traduction,Source,Repetitions,Verifie,Nom EN,Traduction EN,Source EN,Verifie EN
+Tasbih,"matin, soir, apres-priere",سُبْحَانَ اللَّهِ,Subhâna-Llâh,Gloire et pureté à Allah,Exemple à remplacer,33,non,Tasbih,Glory and purity be to Allah,Example to replace,non
+Tahmid,"matin, soir, apres-priere",الْحَمْدُ لِلَّهِ,Al-hamdu li-Llâh,Louange à Allah,Exemple à remplacer,33,non,Tahmid,Praise be to Allah,Example to replace,non
